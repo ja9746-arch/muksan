@@ -50,5 +50,11 @@ for (const [b, want, label] of MANSE) {
   if (want) ok(P4(b) === want, `만세력 ${label}: ${P4(b)}`)
   else { const s = sajuOf(b); ok(s.solar && s.solar.year === 1995 && s.solar.month === 7 && s.solar.day === 29, `${label}: ${s.solar && [s.solar.year, s.solar.month, s.solar.day].join('-')}`) }
 }
+// 세기·채울 기운 — 자리 무게(월령 30·일지 20·나머지 10, 일간 제외)와 지장간으로 보는 교과서 꼴
+for (const [b, label, wantS, wantY] of [
+  [{ cal: '양력', y: 2026, m: 3, d: 14, h: 9, mi: 0, sex: '남' }, '丁火 卯월, 인성(木)이 넘침 → 재성(金)으로 누름', '강', '金'],
+  [{ cal: '양력', y: 1950, m: 1, d: 3, h: 1, mi: 0, sex: '남' }, '戊土 子월, 물이 넘쳐 흙이 여림 → 불(인성)로 받침', '약', '火'],
+  [{ cal: '양력', y: 1991, m: 4, d: 23, h: 22, mi: 0, sex: '남' }, '癸水 辰월에 壬·癸·亥·亥 — 물이 굳셈', '강', null],
+]) { const s = sajuOf(b); ok(s.strong === wantS && (!wantY || s.yong === wantY), `세기 ${label}: ${s.strong}·${s.yong} (${s.ratio}%)`) }
 console.log(bad ? `\n틀림 ${bad}` : '\n엔진 시험 모두 통과')
 process.exit(bad ? 1 : 0)

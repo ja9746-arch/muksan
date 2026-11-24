@@ -62,6 +62,21 @@ function rel(a, b) {
 const RELKO = { same: '같은 기운이라 힘이 겹칩니다', gen: '앞 글자가 뒤 글자를 살려 줍니다', genr: '뒤 글자가 앞 글자를 살려 줍니다', ctl: '서로 부딪칩니다' }
 const SK_EL = ['木', '木', '火', '火', '土', '土', '金', '金', '水', '水']
 const BR_EL = ['水', '土', '木', '木', '土', '火', '火', '土', '金', '金', '土', '水']
+/* 지장간 — 땅 글자 속 하늘 글자와 머무는 날수(여기·중기·본기). 하늘 글자 번호 甲0 乙1 丙2 丁3 戊4 己5 庚6 辛7 壬8 癸9 */
+const JIJANG = [
+  [[8, 10], [9, 20]],            // 子 壬10 癸20
+  [[9, 9], [7, 3], [5, 18]],     // 丑 癸9 辛3 己18
+  [[4, 7], [2, 7], [0, 16]],     // 寅 戊7 丙7 甲16
+  [[0, 10], [1, 20]],            // 卯 甲10 乙20
+  [[1, 9], [9, 3], [4, 18]],     // 辰 乙9 癸3 戊18
+  [[4, 7], [6, 7], [2, 16]],     // 巳 戊7 庚7 丙16
+  [[2, 10], [5, 9], [3, 11]],    // 午 丙10 己9 丁11
+  [[3, 9], [1, 3], [5, 18]],     // 未 丁9 乙3 己18
+  [[4, 7], [8, 7], [6, 16]],     // 申 戊7 壬7 庚16
+  [[6, 10], [7, 20]],            // 酉 庚10 辛20
+  [[7, 9], [3, 3], [4, 18]],     // 戌 辛9 丁3 戊18
+  [[4, 7], [0, 7], [8, 16]],     // 亥 戊7 甲7 壬16
+]
 
 /* ───────── 한글 ───────── */
 const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'
@@ -210,13 +225,23 @@ export function sajuOf(b) {
   const p = pillarsOf(b); if (!p) return null
   const [hr, dy, mo, yr] = p.cols
   const cnt = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 }, raw = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 }
-  const add = (e, w) => { cnt[e] += w; raw[e] += 1 }
-  for (const c of [yr, mo, dy, hr]) if (c) { add(SK_EL[c.stem.index], 1); add(BR_EL[c.branch.index], c === mo ? 2 : 1) }
+  for (const c of [yr, mo, dy, hr]) if (c) { raw[SK_EL[c.stem.index]] += 1; raw[BR_EL[c.branch.index]] += 1 }
+  /* 세기 — 자리마다 무게가 다르고, 땅 글자는 본기를 주로, 속에 든 다른 기운(지장간)을 조금 셈한다.
+     하늘 글자 10, 땅 글자 10, 달 땅 글자(월령) 30, 날 땅 글자 20 — 모두 100. 태어난 날의 하늘 글자(나 자신)는 세지 않는다. */
+  const put = (c, w, isStem) => {
+    if (isStem) { cnt[SK_EL[c.stem.index]] += w; return }
+    // 땅 글자는 본기(가장 오래 머무는 기운)에 무게의 4/5, 나머지 지장간에 날수대로 1/5 — 亥가 반쯤 흙으로 셈되는 일이 없게
+    const hid = JIJANG[c.branch.index], main = hid[hid.length - 1], rest = hid.slice(0, -1), rs = rest.reduce((a, [, d]) => a + d, 0)
+    cnt[SK_EL[main[0]]] += w * (rest.length ? 0.8 : 1)
+    for (const [si, d] of rest) cnt[SK_EL[si]] += w * 0.2 * d / rs
+  }
+  for (const c of [yr, mo, hr]) if (c) put(c, 10, true)
+  for (const c of [yr, mo, dy, hr]) if (c) put(c, c === mo ? 30 : c === dy ? 20 : 10, false)
   const dm = SK_EL[dy.stem.index]
   const total = Object.values(cnt).reduce((a, b) => a + b, 0)
   const help = cnt[dm] + cnt[genBy(dm)]
   const ratio = help / total
-  const strong = ratio > 0.55 ? '강' : ratio < 0.45 ? '약' : '중'
+  const strong = ratio > 0.54 ? '강' : ratio < 0.46 ? '약' : '중'
   let yong, why
   if (strong === '약') {
     const a = genBy(dm), b2 = dm
@@ -225,7 +250,7 @@ export function sajuOf(b) {
   } else if (strong === '강') {
     const out = gen(dm), money = ctl(dm), rule = ctlBy(dm)
     if (cnt[genBy(dm)] > cnt[dm]) { yong = money; why = `바탕을 감싸는 기운이 지나치게 두텁습니다. 그 두터움을 덜어 쓰는 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
-    else { yong = [out, money, rule].sort((x, y) => cnt[x] - cnt[y])[0]; why = `바탕(${ELKO[dm]})이 넘칠 만큼 굳셉니다. 그 힘을 밖으로 풀어 줄 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
+    else { yong = [out, money, rule].sort((x, y) => cnt[x] - cnt[y])[0]; why = `바탕(${ELKO[dm]})이 넘칠 만큼 굳셉니다. ${yong === out ? '그 힘을 밖으로 풀어 줄' : yong === money ? '그 힘을 부려 쓸 거리가 되는' : '그 힘을 다잡아 줄'} ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
   } else {
     yong = EL.slice().sort((x, y) => cnt[x] - cnt[y] || ELI[x] - ELI[y])[0]
     why = `바탕과 둘레 기운이 고르게 맞섭니다. 가장 엷은 ${ELKO[yong]} 기운을 이름으로 채워 고르기를 맞춥니다.`
@@ -240,8 +265,8 @@ export function sajuOf(b) {
   // 조후 — 겨울 달은 불, 여름 달은 물
   const mb = mo.branch.index
   let johu = null
-  if ([11, 0, 1].includes(mb) && cnt['火'] < 1.5) johu = '火'
-  if ([5, 6, 7].includes(mb) && cnt['水'] < 1.5) johu = '水'
+  if ([11, 0, 1].includes(mb) && cnt['火'] < total * 0.12) johu = '火'
+  if ([5, 6, 7].includes(mb) && cnt['水'] < total * 0.12) johu = '水'
   if (johu === gi) johu = null   // 조후가 꺼릴 기운과 겹치면 억부(용신)를 따른다 — 한 사주에 '채워라'와 '피하라'를 같이 말하지 않는다
   const lack = EL.filter(e => raw[e] === 0)
   const over = EL.filter(e => cnt[e] >= total * 0.38)
@@ -255,9 +280,11 @@ export function sajuOf(b) {
 export function sajuText(s) {
   const L = []
   L.push(`태어난 날의 하늘 글자는 ${s.dmHj}(${ELKO[s.dm]}) — ${s.dmTxt} 바탕입니다.`)
-  const order = EL.slice().sort((a, b) => s.cnt[b] - s.cnt[a])
+  const order = EL.slice().sort((a, b) => s.raw[b] - s.raw[a] || s.cnt[b] - s.cnt[a])
   L.push(`여덟 글자${s.hourKnown ? '' : '(태어난 시를 몰라 여섯 글자)'}를 다섯 기운으로 세면 ${order.map(e => `${ELKO[e]} ${s.raw[e]}`).join(' · ')}입니다.${s.lack.length ? ` ${s.lack.map(e => ELKO[e]).join('·')} 기운은 한 글자도 없습니다.` : ''}`)
   if (s.termDay) L.push('태어난 날이 절기가 바뀌는 날이라, 태어난 시를 모르면 달 기둥이 둘 중 하나로 갈립니다. 한낮에 태어난 것으로 셌습니다 — 시를 알면 넣어 주십시오.')
+  { const mo = s.cols[2], dy = s.cols[1]
+    L.push(`나를 돕는 기운(같은 기운과 나를 살리는 기운)이 100 가운데 ${s.ratio}으로 ${s.strong === '강' ? '넘치는' : s.strong === '약' ? '모자란' : '고른'} 편입니다. 글자 수보다 자리가 무거워, 태어난 달의 땅 글자 ${mo.b}(${mo.bk}·${ELKO[mo.be]})${batchim(mo.bk) ? '이' : '가'} 30, 날의 땅 글자 ${dy.b}(${dy.bk}·${ELKO[dy.be]})${batchim(dy.bk) ? '이' : '가'} 20, 나머지 글자는 10씩으로 셌습니다.`) }
   L.push(s.why)
   if (s.johu && s.johu !== s.yong) L.push(`${s.johu === '火' ? '찬 계절에 태어나 몸을 데울 불' : '더운 계절에 태어나 열을 식힐 물'} 기운도 함께 챙기면 좋습니다.`)
   L.push(`그래서 이름 글자는 ${J.을(ELKO[s.yong] + '(' + s.yong + ')')} 가장 먼저, ${J.을(ELKO[s.hee] + '(' + s.hee + ')')} 그다음으로 담고, ${ELKO[s.gi]}(${s.gi}) 기운은 피해서 고릅니다.`)
