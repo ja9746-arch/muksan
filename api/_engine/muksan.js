@@ -252,8 +252,14 @@ export function sajuOf(b) {
     if (cnt[genBy(dm)] > cnt[dm]) { yong = money; why = `바탕을 감싸는 기운이 지나치게 두텁습니다. 그 두터움을 덜어 쓰는 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
     else { yong = [out, money, rule].sort((x, y) => cnt[x] - cnt[y])[0]; why = `바탕(${ELKO[dm]})이 넘칠 만큼 굳셉니다. ${yong === out ? '그 힘을 밖으로 풀어 줄' : yong === money ? '그 힘을 부려 쓸 거리가 되는' : '그 힘을 다잡아 줄'} ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
   } else {
-    yong = EL.slice().sort((x, y) => cnt[x] - cnt[y] || ELI[x] - ELI[y])[0]
-    why = `바탕과 둘레 기운이 고르게 맞섭니다. 가장 엷은 ${ELKO[yong]} 기운을 이름으로 채워 고르기를 맞춥니다.`
+    // 고른 사주는 계절(조후)을 먼저 본다 — 겨울 달에 불이 엷으면 불, 여름 달에 물이 엷으면 물. 아니면 가장 엷은 기운
+    const mb0 = mo.branch.index
+    const season = [11, 0, 1].includes(mb0) && cnt['火'] < total * 0.15 ? '火' : [5, 6, 7].includes(mb0) && cnt['水'] < total * 0.15 ? '水' : null
+    if (season) { yong = season; why = `바탕과 둘레 기운이 고르게 맞섭니다. 다만 ${season === '火' ? '찬 계절에 태어나 몸을 데울 불' : '더운 계절에 태어나 열을 식힐 물'} 기운이 엷어 그것을 이름으로 채웁니다.` }
+    else {
+      yong = EL.slice().sort((x, y) => cnt[x] - cnt[y] || ELI[x] - ELI[y])[0]
+      why = `바탕과 둘레 기운이 고르게 맞섭니다. 가장 엷은 ${ELKO[yong]} 기운을 이름으로 채워 고르기를 맞춥니다.`
+    }
   }
   /* 희신 — 용신을 거드는 기운. 넘치는 쪽(바탕과 바탕을 살리는 기운)이 희신이 되지 않게 고른다.
      약하면 인성·비겁 가운데 용신이 아닌 쪽, 강하면 설기(식상)·재성 가운데 용신이 아닌 쪽(관성이 용신이면 재성) */
