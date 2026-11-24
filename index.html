@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>묵산작명원 — 평생 불릴 이름을 바르게 짓습니다</title>
+<meta name="description" content="사주에 모자란 기운을 이름으로 채웁니다. 대법원 인명용 한자로 짓고 열 가지 잣대로 잽니다. 아기 이름 · 개명 · 이름 감정 · 무료 만세력">
+<meta name="theme-color" content="#1e1915">
+<link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="stylesheet" href="fonts/serif.css">
+<link rel="preload" as="image" href="img/hero.webp">
+<style>
+:root{
+ --paper:#f2e9d8;--paper2:#e8dcc4;--ink:#1e1915;--ink2:#4b433a;--mute:#857a6c;--red:#a93222;--gold:#a3843f;--line:rgba(60,45,30,.2);
+ --serif:"MSerif","Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang",serif;
+ --mok:#4f6b3a;--hwa:#a93222;--to:#8a6a2f;--geum:#6d6a66;--su:#2f4a62;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:#1e1915}
+body{font-family:var(--serif);color:var(--ink);font-weight:500;font-size:16px;line-height:1.75;word-break:keep-all;overflow-wrap:break-word;
+ background:#1e1915 url(img/bg-home.webp) center top/cover fixed;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;background:rgba(30,25,21,.55);pointer-events:none}
+img{display:block;max-width:100%;height:auto}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit}
+.app{position:relative;max-width:460px;margin:0 auto;min-height:100vh;background:var(--paper) url(img/hanji.webp) center top/320px repeat;box-shadow:0 0 60px rgba(0,0,0,.45);overflow-x:hidden}
+.scene{display:none;min-height:100vh;padding-bottom:40px}
+.scene.on{display:block;animation:fade .35s ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.scene.on{animation:none}*{transition:none!important;animation:none!important}}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* 머리 */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(242,233,216,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.top .back{width:40px;height:40px}
+.top .back img{width:40px;height:40px}
+.top .brand{height:34px}
+.top .brand img{height:34px;width:auto}
+.top .sp{width:40px}
+
+/* 대문 */
+.hero{position:relative}
+.hero img{width:100%;aspect-ratio:3/2;object-fit:cover}
+.hero .mist{position:absolute;left:-30%;bottom:6%;width:90%;aspect-ratio:auto;opacity:.85;pointer-events:none;animation:drift 26s linear infinite}
+.hero .mist.b{bottom:30%;left:20%;width:70%;opacity:.55;animation-duration:34s;animation-direction:reverse}
+@keyframes drift{from{transform:translateX(-12%)}to{transform:translateX(42%)}}
+.lead{padding:22px 24px 6px;font-size:17px;line-height:1.85;text-align:center;color:var(--ink2)}
+.lead b{color:var(--ink)}
+.menu{padding:14px 22px 6px;display:grid;gap:14px}
+.mbtn{display:block;text-align:left}
+.mbtn img{width:100%}
+.mbtn small{display:flex;justify-content:space-between;gap:8px;padding:6px 6px 0;font-size:14px;color:var(--ink2)}
+.mbtn small b{color:var(--red);white-space:nowrap}
+.sect{margin:26px 18px 0;padding:22px 18px;background:rgba(255,252,244,.55);border:1px solid var(--line);border-radius:4px;position:relative}
+.sect::before{content:"";position:absolute;inset:4px;border:1px solid rgba(163,132,63,.35);border-radius:2px;pointer-events:none}
+.sect h2{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:.02em}
+.sect .sub{text-align:center;color:var(--mute);font-size:14px;margin-bottom:14px}
+.ten{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px}
+.ten li{list-style:none;display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;font-size:14px;line-height:1.45}
+.ten img{width:44px;height:40px;object-fit:contain}
+.ten b{display:block;font-size:15px}
+.ten span{color:var(--mute);font-size:12.5px}
+.sieve{display:grid;gap:6px;margin-top:6px}
+.sieve div{display:flex;justify-content:space-between;align-items:baseline;padding:6px 4px;border-bottom:1px dashed var(--line);font-size:15px}
+.sieve div b{font-size:17px}
+.sieve .last{border:0;color:var(--red)}
+.foot{margin:30px 18px 0;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mute);line-height:1.7;text-align:center}
+.foot .links{margin-bottom:8px}
+.foot .links a{margin:0 4px;text-decoration:none;color:var(--ink2)}
+.mini{font-size:12.5px;color:var(--mute);text-align:center;margin-top:14px}
+.mini a{margin:0 3px;color:var(--ink2);text-decoration:none}
+
+/* 의뢰서 */
+.form{margin:16px 14px 0;background:var(--paper) url(img/hanji.webp) center/320px;border:1px solid rgba(80,60,40,.35);box-shadow:0 2px 0 rgba(255,255,255,.4) inset,0 6px 20px rgba(60,40,20,.12);position:relative}
+.form::before{content:"";position:absolute;inset:6px;border:1px solid rgba(163,132,63,.55);pointer-events:none}
+.form .head{height:140px;background:url(img/uiroe.webp) center top/100% auto no-repeat;position:relative}
+.form .head h1{position:absolute;inset:auto 0 10px;text-align:center;font-size:14px;color:var(--mute);font-weight:500}
+.form .body{padding:6px 22px 24px}
+.field{padding:14px 0;border-bottom:1px solid var(--line)}
+.field:last-of-type{border-bottom:0}
+.field>label,.field>.lab{display:block;font-size:15px;font-weight:700;margin-bottom:8px}
+.field .hint{font-size:13px;color:var(--mute);margin-top:6px;line-height:1.55}
+.in{width:100%;height:50px;padding:0 14px;font:inherit;font-size:18px;color:var(--ink);background:url(img/inp-long.webp) center/100% 100% no-repeat;border:0;outline:0}
+.in.s{width:auto;min-width:0}
+.row{display:flex;gap:8px;align-items:center}
+.row .in{flex:1}
+.ymd{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px}
+.ymd label{position:relative}
+.ymd label span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--mute);pointer-events:none}
+.sel{width:100%;height:50px;padding:0 14px;font:inherit;font-size:17px;color:var(--ink);background:url(img/inp-long.webp) center/100% 100% no-repeat;border:0;-webkit-appearance:none;appearance:none}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{position:relative;min-width:84px;height:44px;padding:0 18px;font-size:16px;background:url(img/pill-l2.webp) center/100% 100% no-repeat;color:var(--ink)}
+.pill[aria-pressed=true]{background-image:url(img/pill-d2.webp);color:#f2e9d8}
+.pill.sm{min-width:0;height:38px;padding:0 14px;font-size:15px}
+.chk{display:inline-flex;align-items:center;gap:8px;font-size:15px}
+.chk img{width:28px;height:28px}
+.picker{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.picker button{padding:6px 2px 4px;border:1px solid var(--line);background:rgba(255,252,244,.6);text-align:center;line-height:1.2}
+.picker button b{display:block;font-size:24px;font-weight:700}
+.picker button span{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker button[aria-pressed=true]{border-color:var(--red);background:#fff6ec;box-shadow:0 0 0 1px var(--red) inset}
+.picker button[aria-pressed=true] b{color:var(--red)}
+.pk-h{font-size:14px;color:var(--ink2);margin-top:10px}
+.more{display:block;margin:8px auto 0;font-size:14px;color:var(--ink2);text-decoration:underline}
+.err{color:var(--red);font-size:14px;margin-top:6px;min-height:0}
+.cta{display:block;width:min(100%,340px);margin:20px auto 0}
+.cta img{width:100%}
+.cta[disabled]{opacity:.45}
+.cta2{display:block;width:min(100%,300px);margin:12px auto 0}
+.dbtn{display:block;padding:14px 10px;background:#1e1915;color:#f2e9d8;border:1px solid #a3843f;border-radius:6px;font-size:19px;font-weight:700;letter-spacing:.06em;box-shadow:0 0 0 3px #1e1915,0 0 0 4px rgba(163,132,63,.5)}
+.cta2 img{width:100%}
+
+/* 먹 가는 장면 */
+.grind{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;position:relative;overflow:hidden;background:var(--paper) url(img/bg-paper.webp) center/cover}
+.stage{position:relative;width:260px;height:330px}
+.stage .enso{position:absolute;left:50%;top:0;width:250px;transform:translateX(-50%);opacity:.9;animation:spin 9s linear infinite}
+.stage .yeon{position:absolute;left:50%;bottom:0;width:150px;transform:translateX(-50%)}
+.stage .muk{position:absolute;left:50%;bottom:70px;width:44px;transform-origin:50% 90%;animation:rub 1.4s ease-in-out infinite}
+.stage .blot{position:absolute;left:50%;top:52px;width:150px;transform:translateX(-50%) scale(.2);opacity:0;animation:bleed 3s ease-out infinite}
+@keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
+@keyframes rub{0%,100%{transform:translate(-80%,0) rotate(-16deg)}50%{transform:translate(-20%,-6px) rotate(-8deg)}}
+@keyframes bleed{0%{opacity:0;transform:translateX(-50%) scale(.2)}30%{opacity:.5}100%{opacity:0;transform:translateX(-50%) scale(1.15)}}
+.say{margin-top:26px;font-size:19px;font-weight:700;min-height:1.8em}
+.say2{margin-top:6px;font-size:14px;color:var(--mute);min-height:1.6em}
+
+/* 결과 공통 */
+.pageh{padding:18px 18px 0;text-align:center}
+.pageh h1{font-size:22px;font-weight:700;line-height:1.5}
+.pageh p{font-size:14.5px;color:var(--ink2);margin-top:4px}
+.card{margin:16px 14px 0;padding:18px 16px;background:rgba(255,252,244,.62);border:1px solid var(--line);position:relative}
+.card::before{content:"";position:absolute;inset:4px;border:1px solid rgba(163,132,63,.3);pointer-events:none}
+.card h2{font-size:18px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h2 img{width:30px;height:30px;object-fit:contain}
+.card p{font-size:15.5px;margin-top:6px}
+.card .note{font-size:13px;color:var(--mute)}
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid rgba(30,25,21,.55);text-align:center;background:rgba(255,253,247,.6)}
+.pillars div{border-left:1px solid rgba(30,25,21,.25);padding:4px 0 6px}
+.pillars div:first-child{border-left:0}
+.pillars .h{font-size:12px;color:var(--mute);border-bottom:1px solid rgba(30,25,21,.2);padding-bottom:2px}
+.pillars b{display:block;font-size:30px;line-height:1.25;font-weight:700}
+.pillars i{display:block;font-style:normal;font-size:11.5px;color:var(--mute);margin-top:-2px}
+.pillars .dm{color:var(--red)}
+.els{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px;text-align:center}
+.els img{width:52px;height:52px;margin:0 auto;object-fit:contain}
+.els b{display:block;font-size:20px;line-height:1.2;margin-top:4px}
+.els span{font-size:12px;color:var(--mute)}
+.els .need img{filter:drop-shadow(0 0 6px rgba(169,50,34,.55))}
+.els .need span{color:var(--red);font-weight:700}
+.els .zero b{color:var(--mute)}
+.yong{margin-top:12px;padding:12px 14px;background:rgba(169,50,34,.06);border-left:3px solid var(--red);font-size:15.5px}
+
+/* 만세력 책 */
+.book{position:relative;margin:10px 6px 0}
+.book img{width:100%}
+.book .cell{position:absolute;width:10.2%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.book .cell b{font-size:clamp(22px,7.4vw,34px);line-height:1.1;font-weight:700}
+.book .cell i{font-style:normal;font-size:11px;color:var(--mute);margin-top:2px}
+.book .cell.dm b{color:var(--red)}
+.book .lab{position:absolute;width:10.2%;text-align:center;font-size:11.5px;color:var(--ink2);top:20.2%}
+
+/* 봉한 이름 */
+.envs{display:grid;gap:10px;margin-top:6px}
+.env{position:relative}
+.env img{width:100%}
+.env .l,.env .r{position:absolute;top:50%;transform:translateY(-50%);font-size:14px;line-height:1.3}
+.env .l{left:7%}
+.env .l b{display:block;font-size:17px}
+.env .r{right:7%;text-align:right}
+.env .r b{display:block;font-size:20px;color:var(--red)}
+.env .r .mseal{display:flex;gap:3px;justify-content:flex-end;margin-top:3px}
+.mseal img{width:22px;height:22px;object-fit:contain}
+.price{margin:18px 14px 0;padding:20px 18px;background:#1e1915;color:#f2e9d8;position:relative;text-align:center}
+.price::before{content:"";position:absolute;inset:5px;border:1px solid rgba(201,166,90,.5);pointer-events:none}
+.price h2{font-size:18px;font-weight:700}
+.price ul{list-style:none;text-align:left;margin:12px 4px 0;font-size:14.5px;line-height:1.65}
+.price li{padding-left:16px;position:relative;margin-top:4px}
+.price li::before{content:"";position:absolute;left:2px;top:.72em;width:6px;height:6px;background:var(--red);transform:rotate(45deg)}
+.price .won{font-size:30px;font-weight:700;margin-top:12px;color:#e9cf96}
+.price .won small{font-size:15px;color:#f2e9d8}
+.price .cta{margin-top:14px}
+.price .legal{font-size:12px;color:#b9ad9b;margin-top:12px;line-height:1.6;text-align:left}
+.price .legal a{color:#e9cf96}
+.paynote{display:inline-block;margin-top:10px;padding:3px 10px;border:1px solid rgba(233,207,150,.5);font-size:12.5px;color:#e9cf96}
+.paynote[hidden]{display:none}
+
+/* 감정 — 족자 */
+.scroll{margin:14px auto 0;width:min(86%,340px);position:relative}
+.scroll .rt{width:100%}
+.scroll .body{margin:-14px 6% 0;padding:20px 0 18px;background:#f7f0e2 url(img/hanji.webp) center/260px;box-shadow:0 4px 12px rgba(60,40,20,.15);text-align:center}
+.scroll .rb{width:100%;margin-top:-4px}
+.vname{display:flex;justify-content:center;gap:16px}
+.vname div{display:flex;flex-direction:column;align-items:center}
+.vname b{font-size:44px;line-height:1.2;font-weight:700}
+.vname span{font-size:15px;color:var(--mute)}
+.grade{margin-top:12px;font-size:15px;color:var(--ink2)}
+.grade b{font-size:28px;color:var(--red);margin:0 4px}
+.sealed{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px dashed var(--line)}
+.sealed img{width:40px;height:36px;object-fit:contain;opacity:.75}
+.sealed b{font-size:16px}
+.sealed em{font-style:normal;font-size:13px;color:var(--red);border:1px solid rgba(169,50,34,.5);padding:1px 8px}
+
+/* 잣대 */
+.chk10{display:grid;gap:0}
+.ck{padding:14px 2px;border-bottom:1px solid var(--line)}
+.ck:last-child{border-bottom:0}
+.ck .t{display:grid;grid-template-columns:40px 1fr 52px;gap:10px;align-items:center}
+.ck .t img{width:40px;height:36px;object-fit:contain}
+.ck .t b{font-size:16.5px}
+.ck .t b small{font-size:12px;color:var(--mute);margin-right:4px;font-weight:500}
+.ck .t .sc{text-align:right;font-size:18px;font-weight:700}
+.bar{height:16px;margin:6px 0 2px 50px;position:relative}
+.bar img{height:16px;width:auto;max-width:100%;object-fit:fill}
+.ck .v{margin:6px 0 0 50px;font-size:15px;font-weight:700}
+.ck ul{list-style:none;margin:4px 0 0 50px}
+.ck li{font-size:14px;color:var(--ink2);line-height:1.6;margin-top:3px}
+
+/* 이름 패 */
+.names{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 14px 0}
+.nc{position:relative;aspect-ratio:360/703;background:url(img/card.webp) center/100% 100% no-repeat;text-align:center;padding:0}
+.nc .sq{position:absolute;left:12%;right:12%;top:9%;height:39%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.nc .sq b{font-size:clamp(28px,9vw,40px);font-weight:700}
+.nc .rk{position:absolute;left:9%;top:3%;font-size:12px;color:var(--mute)}
+.nc .ko{position:absolute;left:0;right:0;top:56%;font-size:19px;font-weight:700;letter-spacing:.12em}
+.nc .sc{position:absolute;left:0;right:0;top:66%;font-size:14px}
+.nc .sc b{font-size:20px;color:var(--red)}
+.nc .ms{position:absolute;left:0;right:0;top:76.5%;display:flex;justify-content:center;gap:4px}
+.nc .ms img{width:24px;height:24px;object-fit:contain}
+.nc .kk{position:absolute;left:10%;right:10%;top:86%;font-size:11.5px;color:var(--ink2);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc .pick{position:absolute;right:5%;top:2%;width:34px;height:34px}
+.nc .pick img{width:34px;height:34px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 14px 0}
+.btns button img{width:100%}
+
+/* 자세히 */
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(30,25,21,.6);display:none;overflow:auto;-webkit-overflow-scrolling:touch}
+.sheet.on{display:block}
+.sheet .in2{max-width:460px;margin:0 auto;min-height:100%;background:var(--paper) url(img/hanji.webp) center top/320px;padding-bottom:40px;position:relative}
+.sheet .x{position:sticky;top:8px;float:right;margin:8px 10px 0 0;width:40px;height:40px;z-index:2}
+.sheet .x img{width:40px}
+.plate{position:relative;margin:56px 14px 0}
+.plate img{width:100%}
+.plate .tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}
+.plate .tx b{font-size:clamp(26px,8vw,36px);font-weight:700;letter-spacing:.14em}
+.plate .tx span{font-size:15px;color:var(--ink2)}
+.score{display:flex;justify-content:center;align-items:baseline;gap:8px;margin-top:10px}
+.score b{font-size:40px;color:var(--red);font-weight:700;line-height:1}
+.score span{font-size:15px;color:var(--ink2)}
+.seals{display:flex;justify-content:center;gap:8px;margin-top:8px}
+.seals figure{text-align:center;width:72px}
+.seals img{width:46px;height:46px;object-fit:contain;margin:0 auto}
+.seals figcaption{font-size:10.5px;line-height:1.3;color:var(--mute);margin-top:2px}
+.join{text-align:center;margin:12px 18px 0;font-size:16px;line-height:1.7}
+.wh{position:relative;margin:8px 0 0}
+.wh img{width:100%}
+.wh .bx{position:absolute;top:42%;height:55%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+.wh .bx b{font-size:clamp(22px,6.6vw,30px);font-weight:700}
+.wh .bx span{font-size:12px}
+.wh .bx.gil span{color:var(--mok)}
+.wh .bx.hyung b,.wh .bx.hyung span{color:var(--red)}
+.flow{display:flex;align-items:center;justify-content:center;gap:2px;margin-top:10px}
+.flow .el{text-align:center;width:58px}
+.flow .el img{width:46px;height:46px;margin:0 auto;object-fit:contain}
+.flow .el span{display:block;font-size:12px;color:var(--ink2)}
+.flow .ar{width:54px;text-align:center}
+.flow .ar img{width:54px;height:auto}
+.flow .ar span{display:block;font-size:11px;color:var(--mute)}
+.flow-h{font-size:13.5px;color:var(--mute);text-align:center;margin-top:12px}
+
+/* 견주기 */
+.cmp{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px;margin:14px 10px 0}
+.cmp .nc{aspect-ratio:360/703}
+.cmp .nc .ko{font-size:15px;letter-spacing:.04em}
+.cmp .nc .ms,.cmp .nc .kk,.cmp .nc .pick{display:none}
+.cmp .nc .sc{font-size:12px;top:67%}
+.cmp .nc .sc b{font-size:17px}
+.cmp .nc .sq b{font-size:clamp(22px,7vw,32px)}
+.cmp table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cmpt{margin:14px 10px 0;background:rgba(255,252,244,.6);border:1px solid var(--line)}
+.cmpt table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cmpt th,.cmpt td{border-bottom:1px solid var(--line);padding:8px 4px;text-align:center}
+.cmpt th{text-align:left;font-weight:700;color:var(--ink2);padding-left:10px;white-space:nowrap}
+.cmpt td.best{color:var(--red);font-weight:700}
+
+/* 성명장 */
+.certw{margin:14px 12px 0;box-shadow:0 8px 24px rgba(40,25,10,.25)}
+.certw img{width:100%}
+.cert-note{text-align:center;font-size:13px;color:var(--mute);margin-top:10px}
+
+/* 알림 */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:90;max-width:min(92vw,420px);padding:12px 18px;background:#1e1915;color:#f2e9d8;font-size:14.5px;line-height:1.55;border:1px solid rgba(201,166,90,.5);transition:.25s}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 약관 */
+.pol{position:fixed;inset:0;z-index:80;background:rgba(30,25,21,.6);display:none}
+.pol.on{display:block}
+.pol .box{max-width:460px;margin:0 auto;height:100%;background:var(--paper);display:flex;flex-direction:column}
+.polh{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 8px}
+.polt{display:flex;flex-wrap:wrap;gap:2px}
+.polt button{padding:8px 10px;font-size:14px;color:var(--mute)}
+.polt button.on{color:var(--ink);font-weight:700;box-shadow:0 -2px 0 var(--red) inset}
+.polx{width:40px;height:40px}
+.polx img{width:36px}
+.polb{overflow:auto;padding:16px 20px 40px;font-size:14.5px;line-height:1.75}
+.polb section{display:none}
+.polb section.on{display:block}
+.polb h2{font-size:19px;margin-bottom:2px}
+.polb h3{font-size:15.5px;margin:16px 0 4px}
+.polb .eff{font-size:12.5px;color:var(--mute)}
+.polb ul{padding-left:18px}
+.polb li{margin-top:3px}
+.polb table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}
+.polb th,.polb td{border:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}
+.polb dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:10px}
+.polb dt{color:var(--mute)}
+.box2{margin-top:10px;padding:10px 12px;background:rgba(169,50,34,.06);border-left:3px solid var(--red);font-size:13.5px}
+.items li{list-style:none;margin-top:10px;padding-left:0}
+.items span{display:block;font-size:13px;color:var(--ink2)}
+@media print{
+ body{background:#fff}body::before,.top,.scene:not(#s-cert),.sheet,.toast,#s-cert .noprint{display:none!important}
+ .app{box-shadow:none;max-width:none;background:#fff}#s-cert{display:block!important}.certw{margin:0;box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ═══════════ 대문 ═══════════ -->
+<section class="scene on" id="s-home" aria-label="묵산작명원 첫 화면">
+ <div class="hero">
+  <img src="img/hero.webp" alt="墨山作名院 — 평생 불릴 이름을 바르게 짓습니다" width="1536" height="1024">
+  <img class="mist" src="img/mist-1.webp" alt="" aria-hidden="true">
+  <img class="mist b" src="img/mist-2.webp" alt="" aria-hidden="true">
+ </div>
+ <p class="lead">대법원 <b>인명용 한자 <span data-hc>9,089</span>자</b>를<br>한 자씩 체로 거르고, 태어난 사주에<br><b>모자란 기운을 채우는 이름</b>만 남깁니다.</p>
+ <div class="menu">
+  <button class="mbtn" data-go="baby" type="button"><img src="img/menu-baby.webp" alt="아기 이름 짓기" width="720" height="179"><small><span>사주에 맞춘 이름 스무 개 · 성명장</span><b data-price="baby">19,900원</b></small></button>
+  <button class="mbtn" data-go="rename" type="button"><img src="img/menu-rename.webp" alt="개명할 이름 짓기" width="720" height="179"><small><span>새 이름 스무 개 · 지금 이름 감정 · 신고 안내</span><b data-price="rename">19,900원</b></small></button>
+  <button class="mbtn" data-go="gamjeong" type="button"><img src="img/menu-gam.webp" alt="지어 둔 이름 감정" width="720" height="179"><small><span>열 가지 잣대 · 같은 소리 더 나은 한자 · 감명장</span><b data-price="gamjeong">4,900원</b></small></button>
+  <button class="mbtn" data-go="manse" type="button"><img src="img/menu-manse.webp" alt="무료 만세력" width="720" height="179"><small><span>사주 여덟 글자와 다섯 기운 · 이름이 채울 기운</span><b>무료</b></small></button>
+ </div>
+
+ <div class="sect">
+  <h2>이름을 재는 열 가지 잣대</h2>
+  <p class="sub">사격·음양·소리·사주·인명용·놀림은 체로 걸러 내고,<br>열 가지 모두 점수로 매겨 줄을 세웁니다</p>
+  <ul class="ten" id="tenList"></ul>
+ </div>
+
+ <div class="sect">
+  <h2>이렇게 거릅니다</h2>
+  <p class="sub">예: 2026년 3월 14일 아침에 태어난 김씨 아들</p>
+  <div class="sieve" id="sieveDemo"></div>
+  <p class="mini" style="text-align:left;margin-top:10px">숫자는 그날 실제로 엔진을 돌려 센 것입니다. 사람마다 사주와 성이 달라 남는 수가 다릅니다.</p>
+ </div>
+
+ <footer class="foot">
+  <div class="links"><a href="#" data-pol="terms">이용약관</a>·<a href="#" data-pol="privacy"><b>개인정보처리방침</b></a>·<a href="#" data-pol="refund">환불정책</a>·<a href="#" data-pol="biz">사업자정보</a></div>
+  <div><b>온미라이프</b> · 대표 김민철 · 사업자등록번호 501-04-95672</div>
+  <div>고객센터 1866-0423 · ja9746@naver.com</div>
+  <div style="margin-top:6px">묵산작명원은 백귀야행도(100gwi.com)의 작명소입니다</div>
+ </footer>
+</section>
+
+<!-- ═══════════ 만세력 · 의뢰서 ═══════════ -->
+<section class="scene" id="s-form" aria-label="작명 의뢰서">
+ <div class="top"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <form class="form" id="form" novalidate autocomplete="off">
+  <div class="head"><h1 id="formTitle">아기 이름 짓기</h1></div>
+  <div class="body">
+   <div class="field" id="f-sur">
+    <label for="sur">성</label>
+    <input class="in" id="sur" maxlength="2" placeholder="예: 김" inputmode="text">
+    <div class="pills" id="surHj" style="margin-top:8px"></div>
+    <p class="err" id="e-sur"></p>
+   </div>
+   <div class="field" id="f-given">
+    <label for="given" id="givenLab">이름</label>
+    <input class="in" id="given" maxlength="3" placeholder="예: 서연">
+    <p class="hint" id="givenHint">한 글자씩 한자를 골라 주십시오. 이름에 자주 쓰는 글자가 앞에 있습니다.</p>
+    <div id="givenPick"></div>
+    <p class="err" id="e-given"></p>
+   </div>
+   <div class="field">
+    <span class="lab" id="sexLab">성별</span>
+    <div class="pills" id="sex"><button type="button" class="pill" data-v="남" aria-pressed="false">남자</button><button type="button" class="pill" data-v="여" aria-pressed="false">여자</button></div>
+    <p class="err" id="e-sex"></p>
+   </div>
+   <div class="field">
+    <span class="lab">태어난 날</span>
+    <div class="pills" id="cal"><button type="button" class="pill sm" data-v="양력" aria-pressed="true">양력</button><button type="button" class="pill sm" data-v="음력" aria-pressed="false">음력</button><button type="button" class="pill sm" data-v="윤달" aria-pressed="false">음력 윤달</button></div>
+    <div class="ymd" style="margin-top:10px">
+     <label><input class="in" id="y" inputmode="numeric" maxlength="4" placeholder="2026" aria-label="태어난 해"><span>년</span></label>
+     <label><input class="in" id="m" inputmode="numeric" maxlength="2" placeholder="3" aria-label="태어난 달"><span>월</span></label>
+     <label><input class="in" id="d" inputmode="numeric" maxlength="2" placeholder="14" aria-label="태어난 날"><span>일</span></label>
+    </div>
+    <p class="err" id="e-date"></p>
+   </div>
+   <div class="field">
+    <span class="lab">태어난 시</span>
+    <div class="row"><select class="sel" id="h" aria-label="태어난 시"></select><select class="sel" id="mi" aria-label="태어난 분" style="max-width:120px"></select></div>
+    <p class="hint">시를 모르면 여섯 글자로 봅니다. 이름이 채울 기운이 바뀔 수 있으니 아시면 넣어 주십시오.</p>
+   </div>
+   <div class="field" id="f-dol">
+    <span class="lab">돌림자 <small style="font-weight:500;color:var(--mute)">(있으면)</small></span>
+    <div class="row"><input class="in" id="dol" maxlength="1" placeholder="예: 준" style="max-width:120px"><div class="pills" id="dolPos"><button type="button" class="pill sm" data-v="1" aria-pressed="false">앞 글자</button><button type="button" class="pill sm" data-v="2" aria-pressed="true">뒤 글자</button></div></div>
+    <div id="dolPick"></div>
+   </div>
+   <div class="field" id="f-wish">
+    <span class="lab">이름에 담고 싶은 뜻 <small style="font-weight:500;color:var(--mute)">(둘까지)</small></span>
+    <div class="pills" id="wish"></div>
+   </div>
+   <button class="cta" type="submit" id="go"><img id="goImg" src="img/bd-next.webp" alt="다음"></button>
+   <p class="mini">넣으신 값은 풀이하는 동안만 쓰고 저장하지 않습니다 · <a href="#" data-pol="privacy">개인정보처리방침</a></p>
+  </div>
+ </form>
+</section>
+
+<!-- ═══════════ 먹 가는 장면 ═══════════ -->
+<section class="scene" id="s-grind" aria-label="이름을 거르는 중">
+ <div class="grind">
+  <div class="stage" aria-hidden="true">
+   <img class="enso" src="img/enso.webp" alt="">
+   <img class="blot" src="img/blot-3.webp" alt="">
+   <img class="yeon" src="img/yeon.webp" alt="">
+   <img class="muk" src="img/muk.webp" alt="">
+  </div>
+  <p class="say" id="say" role="status">먹을 갈고 있습니다</p>
+  <p class="say2" id="say2"></p>
+ </div>
+</section>
+
+<!-- ═══════════ 만세력 결과 ═══════════ -->
+<section class="scene" id="s-manse" aria-label="만세력">
+ <div class="top"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <div class="pageh"><h1>만세력</h1><p id="manseWhen"></p></div>
+ <div class="book" id="book"><img src="img/manse-book.webp" alt="萬歲曆" width="1254" height="1254"></div>
+ <div class="card" id="manseCard"></div>
+ <div style="padding:0 14px">
+  <button class="cta" type="button" data-go="baby"><img src="img/bd-go.webp" alt="이름 지으러 가기"></button>
+  <button class="cta2" type="button" data-go="gamjeong"><img src="img/bd-gam.webp" alt="감정 받기"></button>
+ </div>
+</section>
+
+<!-- ═══════════ 무료 결과 ═══════════ -->
+<section class="scene" id="s-free" aria-label="봉해 둔 결과">
+ <div class="top"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <div id="freeBody"></div>
+</section>
+
+<!-- ═══════════ 결제한 결과 ═══════════ -->
+<section class="scene" id="s-full" aria-label="이름 풀이">
+ <div class="top"><button class="back" type="button" data-home aria-label="처음으로"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <div id="fullBody"></div>
+</section>
+
+<!-- ═══════════ 견주기 ═══════════ -->
+<section class="scene" id="s-cmp" aria-label="나란히 견주기">
+ <div class="top"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <div id="cmpBody"></div>
+</section>
+
+<!-- ═══════════ 성명장·감명장 ═══════════ -->
+<section class="scene" id="s-cert" aria-label="성명장">
+ <div class="top noprint"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <div class="certw"><img id="certImg" alt="성명장"></div>
+ <p class="cert-note noprint">사진으로 저장하면 휴대폰 사진첩에 남습니다. 카카오톡 안 브라우저에서는 그림을 길게 눌러 저장하십시오.</p>
+ <div class="btns noprint"><button type="button" id="certSave"><img src="img/bl-save.webp" alt="사진으로 저장"></button><button type="button" id="certPrint"><img src="img/bl-print.webp" alt="인쇄하기"></button></div>
+ <button class="cta2 noprint" type="button" data-home><img src="img/bl-home.webp" alt="처음으로"></button>
+</section>
+
+</div>
+
+<!-- 이름 하나 자세히 -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="이름 풀이 자세히"><div class="in2"><button class="x" type="button" id="sheetX" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button><div id="sheetBody"></div></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 약관·개인정보처리방침·환불정책·사업자정보 -->
+<div class="pol" id="pol" role="dialog" aria-label="약관과 방침"><div class="box">
+ <div class="polh"><div class="polt"><button type="button" data-pt="terms">약관</button><button type="button" data-pt="privacy">개인정보처리방침</button><button type="button" data-pt="refund">환불정책</button><button type="button" data-pt="biz">사업자정보</button></div><button type="button" class="polx" data-pol="x" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button></div>
+ <div class="polb">
+ <section data-ps="terms">
+  <h2>이용약관</h2>
+  <p class="eff">시행일 2026년 11월 24일</p>
+  <h3>제1조 (목적)</h3>
+  <p>이 약관은 온미라이프(대표 김민철, 사업자등록번호 501-04-95672, 이하 "회사")가 운영하는 백귀야행도의 《묵산작명원》(이하 "서비스")을 이용하는 조건과 절차, 회사와 이용자의 권리·의무를 정합니다.</p>
+  <h3>제2조 (서비스의 성격)</h3>
+  <p>서비스는 사주와 성명학(자원오행·수리 사격·음양·소리 오행 등)의 전통 이론에 따라 이름을 짓고 재어 보는 <b>참고용 작명 콘텐츠</b>입니다.</p>
+  <ul><li>성명학은 과학적 예측이 아니며, 이름이 앞으로의 일을 보장하지 않습니다.</li><li>자원오행·소리 오행 등은 학설마다 다른 부분이 있으며, 서비스는 화면에 밝힌 기준을 따릅니다.</li><li>인명용 한자 여부는 대법원 인명용 한자 자료를 기준으로 보여 드리며, 실제 출생신고·개명신고의 수리는 해당 관청과 법원이 판단합니다.</li><li>이름을 정하는 판단과 그 결과에 대한 책임은 이용자에게 있습니다.</li></ul>
+  <h3>제3조 (이용 요금)</h3>
+  <table><tr><th>내용</th><th>요금</th></tr>
+   <tr><td>무료 만세력(사주 여덟 글자·다섯 기운·이름이 채울 기운), 작명 전 거름 과정과 봉한 이름의 점수, 이름 감정의 세 잣대</td><td>무료</td></tr>
+   <tr><td>아기 이름 짓기 — 사주에 맞춘 이름 스무 개, 이름마다 열 잣대 풀이와 원형이정 사격, 나란히 견주기, 성명장</td><td><span data-price="baby">19,900원</span></td></tr>
+   <tr><td>개명할 이름 짓기 — 새 이름 스무 개와 풀이, 지금 이름 감정(넣은 경우), 개명 절차 안내, 성명장</td><td><span data-price="rename">19,900원</span></td></tr>
+   <tr><td>지어 둔 이름 감정 — 열 잣대 풀이와 총점, 같은 소리로 더 나은 한자, 감명장</td><td><span data-price="gamjeong">4,900원</span></td></tr></table>
+  <p>요금은 부가가치세를 포함한 1회 결제이며 자동 결제나 정기 결제는 없습니다. 회사는 간이과세자로서 세금계산서를 발행하지 않습니다. 요금이 바뀌면 바뀌기 전에 서비스 화면에 알립니다.</p>
+  <h3>제4조 (이용 계약의 성립)</h3>
+  <p>결제가 끝난 때에 이용 계약이 성립하며, 회사는 지체 없이 풀이를 화면에 펼칩니다. 회원 가입은 필요하지 않습니다.</p>
+  <h3>제5조 (풀이의 보관)</h3>
+  <p>회사는 이용자가 넣은 성·생년월일·이름과 풀이를 보관하지 않습니다. 성명장·감명장은 ‘사진으로 저장’, ‘인쇄하기’로 이용자가 직접 보관해야 합니다. 결제한 기기와 브라우저에서는 30일 동안 같은 값을 다시 넣으면 다시 결제하지 않고 열 수 있습니다.</p>
+  <h3>제6조 (이용자의 의무)</h3>
+  <ul><li>다른 사람의 생년월일과 이름은 그 사람(아기는 법정대리인)의 뜻에 따라 넣습니다.</li><li>결과를 상업적으로 다시 팔거나 무단으로 복제·배포하지 않습니다.</li><li>자동화된 수단으로 서비스에 과도한 부하를 주거나 결제를 우회하지 않습니다.</li></ul>
+  <h3>제7조 (서비스의 중단)</h3>
+  <p>점검·교체, 통신 장애, 천재지변 등으로 서비스가 잠시 멈출 수 있습니다. 회사의 사유로 결제한 풀이를 받지 못한 경우 전액 환불합니다.</p>
+  <h3>제8조 (책임의 제한)</h3>
+  <p>회사는 고의 또는 중대한 과실이 없는 한 이용자가 풀이를 근거로 내린 결정으로 생긴 손해에 대해 책임지지 않으며, 책임이 인정되는 경우에도 그 범위는 해당 결제 금액을 넘지 않습니다.</p>
+  <h3>제9조 (분쟁의 해결)</h3>
+  <p>문의와 불만은 고객센터(<a href="tel:18660423">1866-0423</a>, <a href="mailto:ja9746@naver.com">ja9746@naver.com</a>)에서 먼저 처리합니다. 해결되지 않는 분쟁은 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관계 법령에 따릅니다.</p>
+ </section>
+ <section data-ps="privacy">
+  <h2>개인정보처리방침</h2>
+  <p class="eff">시행일 2026년 11월 24일</p>
+  <p>회사는 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고 관련 고충을 신속히 처리하기 위해 다음과 같이 처리방침을 둡니다.</p>
+  <h3>1. 처리하는 항목, 목적, 보관 기간</h3>
+  <ul class="items">
+   <li><b>성(한글·한자), 성별, 생년월일, 양력·음력(윤달 여부), (선택) 태어난 시각</b><span>목적 · 사주를 세어 이름이 채울 기운을 정하고 이름을 짓거나 잼</span><span>보관 · 계산하는 동안만 서버에서 처리하고 저장하지 않음</span></li>
+   <li><b>(감정·개명) 지금 이름의 한글과 한자, (선택) 돌림자, 담고 싶은 뜻</b><span>목적 · 이름 감정, 돌림자를 넣은 이름 짓기</span><span>보관 · 계산하는 동안만 처리하고 저장하지 않음</span></li>
+   <li><b>결제: 주문번호, 결제금액, 결제일시, 상품, 열람 여부, 들어온 곳(배너·공지 등)</b><span>목적 · 결제 확인, 환불·분쟁 처리, 매출 집계</span><span>보관 · 5년(전자상거래법). 성·생년월일·이름은 결제 기록에 넣지 않음</span></li>
+   <li><b>결제 증표: 주문번호와 입력값의 지문(되돌려 읽을 수 없게 바꾼 값)</b><span>목적 · 결제한 풀이를 다시 결제하지 않고 열어 드림</span><span>보관 · 이용자 기기의 쿠키에 30일. 서버에는 남지 않음</span></li>
+  </ul>
+  <div class="box2"><b>아기 이름은 부모(법정대리인)가 넣는 것을 전제로 합니다.</b> 아기의 생년월일은 이름을 셈하는 데만 쓰고 저장하지 않습니다. 만 14세 미만 아동이 스스로 자기 정보를 넣지 않도록 해 주십시오.</div>
+  <h3>2. 개인정보의 국외 이전</h3>
+  <p>서비스의 계산은 미국에 있는 서버에서 이루어집니다. 이용자와 맺은 계약을 이행하기 위한 처리위탁으로서 「개인정보 보호법」 제28조의8 제1항 제3호에 따라 아래 내용을 공개합니다.</p>
+  <table>
+   <tr><th>이전받는 자</th><td>Vercel Inc. (<a href="mailto:privacy@vercel.com">privacy@vercel.com</a>)</td></tr>
+   <tr><th>이전 국가</th><td>미국</td></tr>
+   <tr><th>이전 항목</th><td>위 1의 항목, 결제할 때 주문번호·결제금액·들어온 곳</td></tr>
+   <tr><th>시기와 방법</th><td>풀이를 요청할 때마다 암호화된 통신(https)으로 전송</td></tr>
+   <tr><th>목적</th><td>서비스 호스팅, 사주·이름 계산, 결제 기록 보관</td></tr>
+   <tr><th>보유 기간</th><td>회사는 성·생년월일·이름을 저장하지 않음. 결제 기록은 5년</td></tr>
+   <tr><th>거부 방법과 효과</th><td>서비스를 이용하지 않으면 이전되지 않습니다. 계산이 서버에서만 이루어지므로 거부하면 풀이를 받을 수 없습니다.</td></tr>
+  </table>
+  <h3>3. 제3자 제공과 처리 위탁</h3>
+  <p>회사는 이용자의 개인정보를 팔거나 제3자에게 제공하지 않습니다. 서비스 운영을 위해 다음 업체에 처리를 맡깁니다.</p>
+  <ul><li>Vercel Inc. — 웹 서비스 호스팅, 계산 서버</li><li>토스페이먼츠 주식회사 — 결제 처리와 환불</li></ul>
+  <p>카드번호 등 결제 수단 정보는 결제대행사가 처리하며 회사에 전달되지 않습니다.</p>
+  <h3>4. 파기</h3>
+  <p>성·생년월일·이름은 처음부터 저장하지 않으므로 파기할 대상이 없습니다. 법령에 따라 보관하는 결제 기록은 보관 기간이 끝나면 지체 없이 복구할 수 없는 방법으로 지웁니다.</p>
+  <h3>5. 쿠키와 브라우저 저장소</h3>
+  <ul><li>결제 증표: 결제한 풀이를 다시 열 수 있게 서명한 쿠키(ms_paid)를 30일 동안 둡니다. 주문번호와 입력값의 지문만 담깁니다.</li><li>결제창에 다녀오는 동안: 넣은 값을 탭이 닫히면 사라지는 저장소(sessionStorage)에 잠깐 둡니다.</li></ul>
+  <p>광고 추적과 외부 분석 도구는 쓰지 않습니다.</p>
+  <h3>6. 이용자의 권리</h3>
+  <p>이용자는 언제든 자신의 개인정보 열람·정정·삭제·처리 정지를 요청할 수 있으며, 아래 연락처로 요청하시면 지체 없이 처리합니다. 다만 법령에 따라 보관해야 하는 결제 기록은 그 기간 동안 보관합니다.</p>
+  <h3>7. 아동과 청소년</h3>
+  <p>서비스는 이름·연락처 없이 이용할 수 있어 청소년도 이용할 수 있습니다. 아기 이름 짓기는 법정대리인이 아기의 정보를 넣는 것을 전제로 하며, 그 정보는 저장하지 않습니다. 만 19세 미만의 결제에 관한 사항은 환불정책을 따릅니다.</p>
+  <h3>8. 안전성 확보 조치</h3>
+  <p>모든 통신은 암호화(https)하며, 저장하지 않는 설계로 개인정보가 서버에 쌓이지 않게 합니다. 작명 엔진은 서버 안에만 두어 밖에서 내려받을 수 없습니다.</p>
+  <h3>9. 개인정보 보호책임자</h3>
+  <p>성명 김민철 · 전자우편 <a href="mailto:ja9746@naver.com">ja9746@naver.com</a> · 전화 <a href="tel:18660423">1866-0423</a></p>
+  <p>개인정보 침해에 대한 신고나 상담은 개인정보침해신고센터(국번 없이 118), 개인정보분쟁조정위원회(1833-6972)에도 하실 수 있습니다.</p>
+  <h3>10. 방침의 변경</h3>
+  <p>이 방침이 바뀌면 시행 7일 전부터 서비스 화면에 알리고, 이용자에게 불리한 변경은 30일 전부터 알립니다.</p>
+ </section>
+ <section data-ps="refund">
+  <h2>환불정책</h2>
+  <p class="eff">시행일 2026년 11월 24일</p>
+  <h3>1. 전액 환불</h3>
+  <ul><li>오류로 유료 풀이를 받지 못한 경우(기간과 관계없이)</li><li>결제가 중복된 경우(중복분)</li><li>표시·광고한 내용과 다른 풀이가 제공된 경우</li></ul>
+  <div class="box2">유료 풀이는 결제가 끝나면 곧바로 펼쳐지므로, 결제 완료와 함께 열람한 것으로 봅니다. 결제 화면에서 이 점을 미리 알립니다.</div>
+  <h3>2. 환불이 제한되는 경우</h3>
+  <p>디지털 콘텐츠는 열람과 동시에 제공이 끝나 되돌릴 수 없으므로, 「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제2항에 따라 풀이를 펼친 뒤에는 청약철회가 제한됩니다. 다음 사유로도 환불되지 않습니다.</p>
+  <ul><li>지어 드린 이름이나 감정 결과가 마음에 들지 않는 경우</li><li>이용자가 성·생년월일·시각·이름을 잘못 넣은 경우</li><li>학설에 따라 다르게 보는 부분(자원오행·소리 오행 등)이 다른 작명소의 판단과 다른 경우</li></ul>
+  <h3>3. 미성년자 결제</h3>
+  <ul><li>청소년도 이용할 수 있습니다. 다만 결제는 법정대리인(부모 등)의 동의를 받은 뒤 해 주십시오.</li><li><b>만 19세 미만이 법정대리인의 동의 없이 결제한 경우, 본인 또는 법정대리인이 그 계약을 취소할 수 있습니다.</b> 이때는 열람 여부와 관계없이 전액 환불합니다. (민법 제5조)</li><li>다만 법정대리인이 쓰도록 허락한 돈의 범위 안에서 결제했거나, 미성년자가 속임수로 성년인 것처럼 믿게 한 경우에는 취소가 제한될 수 있습니다. (민법 제6조, 제17조)</li><li>취소를 원하시면 결제일시·결제수단과 함께 법정대리인임을 확인할 수 있는 자료를 고객센터로 보내 주십시오.</li></ul>
+  <h3>4. 신청 방법</h3>
+  <p>전자우편(<a href="mailto:ja9746@naver.com">ja9746@naver.com</a>)이나 전화(<a href="tel:18660423">1866-0423</a>)로 이름, 연락처, 결제일시를 알려 주십시오.</p>
+  <h3>5. 처리 기간</h3>
+  <p>요청을 받은 날부터 3영업일 안에 환불 여부를 알려 드리고, 환불이 결정되면 3영업일 안에 결제한 수단으로 돌려 드립니다. 카드 결제 취소는 카드사 사정에 따라 며칠 더 걸릴 수 있습니다.</p>
+ </section>
+ <section data-ps="biz">
+  <h2>사업자정보</h2>
+  <p class="eff">「전자상거래 등에서의 소비자보호에 관한 법률」 제10조에 따른 표시</p>
+  <dl><dt>상호</dt><dd>온미라이프</dd><dt>대표자</dt><dd>김민철</dd><dt>사업자등록번호</dt><dd>501-04-95672</dd><dt>통신판매업 신고</dt><dd>면제 대상(부가가치세법상 간이과세자)</dd><dt>사업장 주소</dt><dd>울산광역시 북구 염포로 685, 110동 1801호(염포동, 염포성원상떼빌)</dd><dt>대표전화</dt><dd><a href="tel:18660423">1866-0423</a></dd><dt>전자우편</dt><dd><a href="mailto:ja9746@naver.com">ja9746@naver.com</a></dd><dt>호스팅</dt><dd>Vercel Inc.</dd></dl>
+  <p>통신판매업 신고는 「전자상거래 등에서의 소비자보호에 관한 법률」 제12조 제1항 단서와 공정거래위원회 고시에 따라 간이과세자는 면제 대상입니다.</p>
+ </section>
+ </div>
+</div></div>
+
+<script src="app.js" defer></script>
+</body>
+</html>

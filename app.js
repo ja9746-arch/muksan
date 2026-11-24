@@ -1,0 +1,549 @@
+/* 묵산작명원 화면 — 계산은 모두 서버(api/)에서 한다. 여기는 보여 주기만 한다. */
+(() => {
+'use strict'
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)]
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches
+const won = n => Number(n || 0).toLocaleString('ko-KR')
+const SS = { get: k => { try { return JSON.parse(sessionStorage.getItem(k)) } catch (e) { return null } }, set: (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)) } catch (e) {} }, del: k => { try { sessionStorage.removeItem(k) } catch (e) {} } }
+const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b), credentials: 'same-origin' }).then(r => r.json())
+let toastT = 0
+const toast = (t, ms = 2800) => { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), ms) }
+const Q = new URLSearchParams(location.search)
+const WANT_TOSS = Q.get('pay') === 'toss'
+const FROM = /^[a-z0-9_-]{1,24}$/i.test(Q.get('from') || '') ? Q.get('from') : ''
+
+const EL = { 木: 'mok', 火: 'hwa', 土: 'to', 金: 'geum', 水: 'su' }
+const ELKO = { 木: '나무', 火: '불', 土: '흙', 金: '쇠', 水: '물' }
+const bat = w => { const c = String(w).replace(/\([^()]*\)$/, '').slice(-1).charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0 }
+const 이가 = w => w + (bat(w) ? '이' : '가')
+const TEN = [
+ ['plum', '사주 보완', '모자란 기운을 채우나'], ['roots', '글자 뿌리', '자원오행이 서로 살리나'],
+ ['rods', '수리 사격', '원·형·이·정 네 격이 길한가'], ['sunmoon', '음양', '획수 홀짝이 어울리나'],
+ ['bell', '소리 오행', '두 학설로 따로 듣기'], ['wave', '부르는 맛', '받침이 넘어가도 괜찮나'],
+ ['book', '뜻', '한자 뜻이 맑은가'], ['sieve', '인명용 한자', '출생신고가 되는 글자인가'],
+ ['tags', '흔한 정도', '2025년 출생신고 순위'], ['scale', '놀림·피하는 글자', '놀림말·불용문자'],
+]
+const KIND = { baby: '아기 이름 짓기', rename: '개명할 이름 짓기', gamjeong: '지어 둔 이름 감정', manse: '무료 만세력' }
+let PRICE = { baby: 19900, rename: 19900, gamjeong: 4900 }, HC = 9089, SURN = new Map()
+let PAYCFG = { mode: 'demo', price: PRICE }
+
+/* ───────── 장면 ───────── */
+let cur = 'home'
+const show = (id, how = 'push') => {
+ $$('.scene').forEach(s => s.classList.toggle('on', s.id === 's-' + id))
+ if (how === 'push' && cur !== id) history.pushState({ s: id }, '')
+ else if (how === 'replace') history.replaceState({ s: id }, '')
+ cur = id; window.scrollTo(0, 0)
+}
+history.replaceState({ s: 'home' }, '')
+addEventListener('popstate', e => {
+ closeSheet(true)
+ const id = (e.state && e.state.s) || 'home'
+ if (id === 'grind') return history.back()
+ if ((id === 'free' && !S.free) || (id === 'full' && !S.full) || (id === 'manse' && !S.manse)) return show('home', 'none')
+ show(id, 'none')
+})
+$$('[data-back]').forEach(b => b.addEventListener('click', () => history.length > 1 ? history.back() : show('home', 'replace')))
+$$('[data-home]').forEach(b => b.addEventListener('click', () => { show('home', 'push') }))
+
+/* ───────── 대문 ───────── */
+const S = { kind: null, input: null, free: null, full: null, manse: null, picks: [], page: 0 }
+$('#tenList').innerHTML = TEN.map(([ic, t, d]) => `<li><img src="img/icon-${ic}.webp" alt="" loading="lazy"><div><b>${t}</b><span>${d}</span></div></li>`).join('')
+const priceFill = () => $$('[data-price]').forEach(e => { const p = PRICE[e.dataset.price]; if (p) e.textContent = won(p) + '원' })
+fetch('api/name?sur=1').then(r => r.json()).then(j => {
+ if (!j || !j.ok) return
+ PRICE = j.price; HC = j.count; SURN = new Map(j.list); priceFill()
+ $$('[data-hc]').forEach(e => e.textContent = won(HC))
+}).catch(() => {})
+priceFill()
+const funnelRows = (f, last) => [
+ ['인명용 한자', won(f.전체) + '자'], ['이름에 쓰는 글자로 엮은 조합', won(f.이름글자)], ['수리 사격 넷이 모두 길한 것', won(f.수리)],
+ ['음양이 어울리는 것', won(f.음양)], ['소리가 부딪치지 않는 것', won(f.소리)], ['사주에 모자란 기운을 채우는 것', won(f.사주)],
+].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('') + `<div class="last"><span>${last}</span><b>${won(f.남은이름)}개</b></div>`
+post('api/name', { input: { kind: 'baby', sex: '남', cal: '양력', y: 2026, m: 3, d: 14, h: 8, mi: 0, sur: '김', surHj: '金' } })
+ .then(j => { if (j && j.ok) $('#sieveDemo').innerHTML = funnelRows(j.view.funnel, '남은 이름') }).catch(() => {})
+
+/* ───────── 의뢰서 ───────── */
+const F = { kind: 'baby', sex: null, cal: '양력', surHj: null, givenHj: [], dolHj: null, dolPos: 2, wish: [] }
+const WISHES = ['밝음', '지혜', '굳셈', '넉넉함', '바름', '평안', '큰뜻', '고움']
+$('#wish').innerHTML = WISHES.map(w => `<button type="button" class="pill sm" data-v="${w}" aria-pressed="false">${w === '큰뜻' ? '큰 뜻' : w}</button>`).join('')
+$('#h').innerHTML = '<option value="">시를 모릅니다</option>' + Array.from({ length: 24 }, (_, i) => `<option value="${i}">${i < 12 ? '오전' : '오후'} ${i % 12 || 12}시</option>`).join('')
+$('#mi').innerHTML = [0, 10, 20, 30, 40, 50].map(m => `<option value="${m}">${String(m).padStart(2, '0')}분</option>`).join('')
+const onlyOne = (box, key, after) => box.addEventListener('click', e => {
+ const b = e.target.closest('.pill'); if (!b) return
+ box.querySelectorAll('.pill').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'))
+ F[key] = b.dataset.v; after && after()
+})
+onlyOne($('#sex'), 'sex'); onlyOne($('#cal'), 'cal'); onlyOne($('#dolPos'), 'dolPos')
+$('#wish').addEventListener('click', e => {
+ const b = e.target.closest('.pill'); if (!b) return
+ const v = b.dataset.v, on = F.wish.includes(v)
+ if (!on && F.wish.length >= 2) return toast('뜻은 둘까지 고를 수 있습니다')
+ F.wish = on ? F.wish.filter(x => x !== v) : [...F.wish, v]
+ b.setAttribute('aria-pressed', on ? 'false' : 'true')
+})
+const hanjaCache = new Map()
+const hanjaOf = eum => hanjaCache.get(eum) || (hanjaCache.set(eum, fetch('api/name?eum=' + encodeURIComponent(eum)).then(r => r.json()).then(j => j && j.ok ? j.list : []).catch(() => [])), hanjaCache.get(eum))
+function picker(box, eum, chosen, onPick, label) {
+ return hanjaOf(eum).then(list => {
+  const wrap = document.createElement('div')
+  if (!list.length) { wrap.innerHTML = `<p class="pk-h">‘${esc(eum)}’ 소리로 쓸 수 있는 인명용 한자가 없습니다.</p>`; box.appendChild(wrap); return }
+  let full = false
+  const draw = () => {
+   const L = full ? list : list.slice(0, 16)
+   wrap.innerHTML = `<p class="pk-h">${label} ‘${esc(eum)}’ — ${chosen() ? `<b>${esc(chosen())}</b> 고름` : '한자를 골라 주십시오'}</p><div class="picker">${L.map(x => `<button type="button" data-h="${esc(x.h)}" aria-pressed="${x.h === chosen()}"><b>${esc(x.h)}</b><span>${esc(x.hun || '')}</span></button>`).join('')}</div>${!full && list.length > 16 ? `<button type="button" class="more">글자 ${list.length - 16}개 더 보기</button>` : ''}`
+  }
+  draw()
+  wrap.addEventListener('click', e => {
+   if (e.target.closest('.more')) { full = true; return draw() }
+   const b = e.target.closest('[data-h]'); if (!b) return
+   onPick(b.dataset.h); draw()
+  })
+  box.appendChild(wrap)
+ })
+}
+const isHangul = s => /^[가-힣]+$/.test(s)
+let surT = 0
+$('#sur').addEventListener('input', () => {
+ clearTimeout(surT); surT = setTimeout(() => {
+  const v = $('#sur').value.trim(), box = $('#surHj'); box.innerHTML = ''; F.surHj = null; $('#e-sur').textContent = ''
+  if (!v) return
+  const opts = SURN.get(v)
+  if (!opts) { if (isHangul(v) && SURN.size) $('#e-sur').textContent = '목록에 없는 성입니다. 고객센터로 알려 주시면 넣어 드립니다.'; return }
+  F.surHj = opts[0]
+  box.innerHTML = opts.map((h, i) => `<button type="button" class="pill sm" data-v="${h}" aria-pressed="${i === 0}">${h}</button>`).join('')
+ }, 200)
+})
+$('#surHj').addEventListener('click', e => { const b = e.target.closest('.pill'); if (!b) return; $$('#surHj .pill').forEach(x => x.setAttribute('aria-pressed', x === b)); F.surHj = b.dataset.v })
+let givT = 0
+$('#given').addEventListener('input', () => {
+ clearTimeout(givT); givT = setTimeout(async () => {
+  const v = $('#given').value.trim(), box = $('#givenPick'); box.innerHTML = ''; $('#e-given').textContent = ''
+  F.givenHj = []
+  if (!v) return
+  if (!isHangul(v)) { $('#e-given').textContent = '이름은 한글로 적어 주십시오.'; return }
+  for (let i = 0; i < [...v].length; i++) {
+   const k = i; await picker(box, [...v][k], () => F.givenHj[k], h => { F.givenHj[k] = h }, `${k + 1}째 글자`)
+  }
+ }, 350)
+})
+let dolT = 0
+$('#dol').addEventListener('input', () => {
+ clearTimeout(dolT); dolT = setTimeout(() => {
+  const v = $('#dol').value.trim(), box = $('#dolPick'); box.innerHTML = ''; F.dolHj = null
+  if (v && isHangul(v)) picker(box, v, () => F.dolHj, h => { F.dolHj = h }, '돌림자')
+ }, 300)
+})
+function openForm(kind) {
+ F.kind = kind; S.kind = kind
+ $('#formTitle').textContent = KIND[kind]
+ const has = { sur: kind !== 'manse', given: kind === 'gamjeong' || kind === 'rename', dol: kind === 'baby' || kind === 'rename', wish: kind === 'baby' || kind === 'rename' }
+ $('#f-sur').hidden = !has.sur; $('#f-given').hidden = !has.given; $('#f-dol').hidden = !has.dol; $('#f-wish').hidden = !has.wish
+ $('#givenLab').textContent = kind === 'rename' ? '지금 이름 (넣으시면 함께 감정합니다)' : '감정할 이름'
+ $('#sexLab').textContent = kind === 'baby' ? '아기 성별' : '성별'
+ $('#y').placeholder = kind === 'baby' ? '2026' : '1990'
+ $('#goImg').src = kind === 'manse' ? 'img/bd-manse.webp' : 'img/bd-next.webp'
+ $('#goImg').alt = kind === 'manse' ? '만세력 펼치기' : '다음'
+ $$('.err').forEach(e => e.textContent = '')
+ show('form')
+}
+$$('[data-go]').forEach(b => b.addEventListener('click', () => openForm(b.dataset.go)))
+
+function readForm() {
+ const k = F.kind, err = (id, t) => { $('#e-' + id).textContent = t; return null }
+ $$('.err').forEach(e => e.textContent = '')
+ const o = { kind: k }
+ if (k !== 'manse') {
+  const sur = $('#sur').value.trim()
+  if (!sur) return err('sur', '성을 적어 주십시오.')
+  if (!F.surHj) return err('sur', '성의 한자를 골라 주십시오.')
+  o.sur = sur; o.surHj = F.surHj
+ }
+ if (k === 'gamjeong' || k === 'rename') {
+  const g = $('#given').value.trim()
+  if (k === 'gamjeong' && !g) return err('given', '감정할 이름을 적어 주십시오.')
+  if (g) {
+   if (!isHangul(g) || g.length > 3) return err('given', '이름은 한글 세 자까지 적어 주십시오.')
+   const hj = [...g].map((_, i) => F.givenHj[i])
+   if (hj.some(x => !x)) return err('given', '이름 글자마다 한자를 골라 주십시오.')
+   o.given = g; o.givenHj = hj.join('')
+  }
+ }
+ if (!F.sex) return err('sex', '성별을 골라 주십시오.')
+ const y = +$('#y').value, m = +$('#m').value, d = +$('#d').value
+ if (!(y >= 1920 && y <= 2030) || !(m >= 1 && m <= 12) || !(d >= 1 && d <= 31)) return err('date', '태어난 해·달·날을 숫자로 적어 주십시오.')
+ Object.assign(o, { sex: F.sex, cal: F.cal, y, m, d, h: $('#h').value === '' ? null : +$('#h').value, mi: +$('#mi').value || 0 })
+ if ((k === 'baby' || k === 'rename')) {
+  const dk = $('#dol').value.trim()
+  if (dk) { if (!F.dolHj) { toast('돌림자의 한자를 골라 주십시오'); return null } o.dolKo = dk; o.dolHj = F.dolHj; o.dolPos = +F.dolPos }
+  o.wish = F.wish.slice()
+ }
+ return o
+}
+$('#h').addEventListener('change', () => { $('#mi').disabled = $('#h').value === '' })
+$('#mi').disabled = true
+
+/* ───────── 먹 가는 장면 ───────── */
+const SAYS = {
+ baby: [['사주 여덟 글자를 펼칩니다', '태어난 해·달·날·시를 만세력으로 셉니다'], ['모자란 기운을 찾습니다', '다섯 기운을 세어 이름이 채울 기운을 정합니다'], ['인명용 한자를 체로 거릅니다', '대법원 인명용 한자 가운데 이름에 쓰는 글자로'], ['원형이정 네 격을 맞춥니다', '81수에서 길한 수만 남깁니다'], ['소리를 두 학설로 듣습니다', '부딪치는 소리를 걸러 냅니다']],
+ gamjeong: [['사주 여덟 글자를 펼칩니다', '태어난 해·달·날·시를 만세력으로 셉니다'], ['글자마다 뿌리를 캡니다', '자원오행과 원획을 셉니다'], ['원형이정 네 격을 셉니다', '81수에 비춰 봅니다'], ['열 가지 잣대로 잽니다', '소리·뜻·놀림까지']],
+ manse: [['만세력을 펼칩니다', '절기와 시각을 맞춥니다'], ['다섯 기운을 셉니다', '나무·불·흙·쇠·물']],
+}
+SAYS.rename = SAYS.baby
+async function grind(kind, job) {
+ show('grind', 'push')
+ const list = SAYS[kind] || SAYS.baby
+ let done = false, out
+ job.then(v => { out = v; done = true }, e => { out = { ok: false, message: '잠시 연결이 불안정합니다. 다시 눌러 주십시오.' }; done = true })
+ const t0 = Date.now(), minMs = RM ? 400 : kind === 'manse' ? 1600 : 2600
+ for (let i = 0; ; i++) {
+  const [a, b] = list[Math.min(i, list.length - 1)]
+  $('#say').textContent = a; $('#say2').textContent = b
+  await sleep(RM ? 200 : 700)
+  if (done && Date.now() - t0 >= minMs) break
+  if (i > 60) break
+ }
+ return out
+}
+$('#form').addEventListener('submit', async e => {
+ e.preventDefault()
+ const o = readForm(); if (!o) { const er = $$('.err').find(x => x.textContent); er && er.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
+ S.input = o; S.free = S.full = null; S.picks = []; S.page = 0
+ const r = await grind(o.kind, post('api/name', { input: o }))
+ if (!r || !r.ok) { history.back(); return toast(r && r.message || '풀이를 펼치지 못했습니다. 다시 눌러 주십시오') }
+ if (r.price) PRICE = r.price
+ if (o.kind === 'manse') { S.manse = r.view; renderManse(); return show('manse', 'replace') }
+ S.free = r.view
+ // 같은 값으로 이미 결제했으면(이 기기 30일) 다시 받지 않고 바로 연다
+ const rs = await post('api/order', { action: 'restore', input: o }).catch(() => null)
+ if (rs && rs.ok) { S.full = rs.eng; renderFull(); toast('이미 결제한 풀이입니다 · 다시 결제하지 않고 열어 드립니다'); return show('full', 'replace') }
+ renderFree(); show('free', 'replace')
+})
+
+/* ───────── 사주 그리기 ───────── */
+const COLS = ['시', '일', '월', '년']
+function pillarsHTML(sj) {
+ return `<div class="pillars">${sj.cols.map((c, i) => `<div><div class="h">${COLS[i]}주</div>${c ? `<b class="${i === 1 ? 'dm' : ''}">${esc(c.s)}</b><i>${esc(c.sk)} · ${ELKO[c.se]}</i><b>${esc(c.b)}</b><i>${esc(c.bk)} · ${ELKO[c.be]}</i>` : '<b style="color:var(--mute)">?</b><i>모름</i><b style="color:var(--mute)">?</b><i>모름</i>'}</div>`).join('')}</div>`
+}
+function elsHTML(sj, mark = true) {
+ return `<div class="els">${Object.keys(EL).map(e => `<div class="${mark && (e === sj.yong) ? 'need' : ''} ${sj.raw[e] ? '' : 'zero'}"><img src="img/el-${EL[e]}.webp" alt="${ELKO[e]}(${e})"><b>${sj.raw[e]}</b><span>${mark && e === sj.yong ? '채울 기운' : mark && e === sj.hee ? '돕는 기운' : ELKO[e]}</span></div>`).join('')}</div>`
+}
+function sajuCard(sj, title = '타고난 사주') {
+ return `<div class="card"><h2><img src="img/icon-plum.webp" alt="">${title}</h2>${pillarsHTML(sj)}${elsHTML(sj)}${(sj.lines || []).map(l => `<p>${esc(l)}</p>`).join('')}</div>`
+}
+function whenText(o, sj) {
+ const t = o.h == null ? '태어난 시 모름' : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
+ const sol = sj.solar && o.cal !== '양력' ? ` (양력 ${sj.solar.year}.${sj.solar.month}.${sj.solar.day})` : ''
+ return `${o.cal === '양력' ? '양력' : o.cal === '윤달' ? '음력 윤달' : '음력'} ${o.y}년 ${o.m}월 ${o.d}일 ${t}${sol} · ${o.sex === '남' ? '남자' : '여자'}`
+}
+function renderManse() {
+ const sj = S.manse.saju, o = S.input
+ $('#manseWhen').textContent = whenText(o, sj)
+ const X = [52.7, 63.2, 73.4, 83.6], Y1 = 24.2, Y2 = 50.2, H = 26
+ $('#book').innerHTML = `<img src="img/manse-book.webp" alt="萬歲曆" width="1254" height="1254">` + sj.cols.map((c, i) => `
+  <span class="lab" style="left:${X[i]}%">${COLS[i]}주</span>
+  <div class="cell ${i === 1 ? 'dm' : ''}" style="left:${X[i]}%;top:${Y1}%;height:${H}%"><b>${c ? esc(c.s) : '?'}</b><i>${c ? esc(c.sk) + ' ' + ELKO[c.se] : '모름'}</i></div>
+  <div class="cell" style="left:${X[i]}%;top:${Y2}%;height:${H + 1}%"><b>${c ? esc(c.b) : '?'}</b><i>${c ? esc(c.bk) + ' ' + ELKO[c.be] : '모름'}</i></div>`).join('')
+ $('#manseCard').innerHTML = `<h2><img src="img/icon-plum.webp" alt="">다섯 기운</h2>${elsHTML(sj)}${sj.lines.map(l => `<p>${esc(l)}</p>`).join('')}<p class="yong"><b>이름이 채울 기운</b> — ${이가(ELKO[sj.yong] + '(' + sj.yong + ')')} 첫째, ${이가(ELKO[sj.hee] + '(' + sj.hee + ')')} 둘째입니다. 이 기운의 한자로 이름을 지으면 사주의 빈자리를 메웁니다.</p><p class="note">날짜는 절기로 달을 가르고, 태어난 시는 서울 기준 30분을 보정해 셉니다(백귀사주 만세력과 같은 셈).</p>`
+}
+
+/* ───────── 무료 결과 ───────── */
+const ORD = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째', '일곱째', '여덟째', '아홉째', '열째']
+const SEALIMG = { 通: ['seal-tong', '열 잣대 모두 7점 넘음'], 補: ['seal-bo', '사주를 크게 보완'], 二說通: ['seal-iseol', '두 학설 모두 통과'], 薦: ['seal-cheon', '묵산이 첫째로 천거'] }
+const msealHTML = seals => `<span class="mseal">${(seals || []).map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}">`).join('')}</span>`
+function priceCard(kind) {
+ const items = {
+  baby: ['봉한 이름 열 개와 다음 열 개 — 모두 스무 개', '이름마다 열 잣대 풀이 · 원형이정 사격 · 오행 흐름', '마음에 드는 이름 셋까지 나란히 견주기', '고른 이름의 성명장(姓名狀) — 사진 저장·인쇄'],
+  rename: ['새 이름 스무 개와 이름마다 열 잣대 풀이', '지금 이름의 열 잣대 감정(넣으신 경우)', '개명 허가 신청과 신고 순서 안내', '고른 이름의 성명장(姓名狀) — 사진 저장·인쇄'],
+  gamjeong: ['봉한 일곱 잣대 풀이와 총점·등급', '같은 소리로 점수가 더 높은 한자', '원형이정 사격과 오행 흐름', '감명장(鑑名狀) — 사진 저장·인쇄'],
+ }[kind]
+ const btn = kind === 'gamjeong' ? ['bd-gam', '감정 받기'] : ['bd-pay', '결제하고 이름 받기']
+ return `<div class="price"><h2>${KIND[kind]}</h2><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul>
+  <div class="won">${won(PRICE[kind])}<small>원</small></div><span class="paynote" id="paynote" hidden></span>
+  <button class="cta" type="button" id="payBtn"><img src="img/${btn[0]}.webp" alt="${btn[1]} ${won(PRICE[kind])}원"></button>
+  <p class="legal">결제하면 곧바로 풀이가 펼쳐집니다. 디지털 콘텐츠라 펼친 뒤에는 환불이 제한됩니다(전자상거래법 제17조 제2항). 오류로 풀이를 받지 못하면 전액 환불합니다. 결제하면 <a href="#" data-pol="terms">이용약관</a>과 <a href="#" data-pol="refund">환불정책</a>에 동의한 것으로 봅니다.</p></div>`
+}
+const miniLinks = '<p class="mini"><a href="#" data-pol="terms">약관</a>·<a href="#" data-pol="privacy">개인정보</a>·<a href="#" data-pol="refund">환불</a>·<a href="#" data-pol="biz">사업자정보</a></p>'
+function renderFree() {
+ const v = S.free, o = S.input, k = v.kind
+ let h = ''
+ if (k === 'gamjeong') {
+  const n = v.name
+  h += `<div class="pageh"><h1>${esc(n.full)} — 이름 감정</h1><p>${esc(whenText(o, v.saju))}</p></div>
+  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
+  <p class="grade">총점 <b>?</b> 봉함</p></div><img class="rb" src="img/rod-bot.webp" alt=""></div>
+  <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b>${c.no}. ${esc(c.title)}</b><em>封</em></div>` : ckHTML(c)).join('')}</div></div>`
+  h += priceCard('gamjeong') + miniLinks
+ } else {
+  h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 열 개를<br>봉해 두었습니다</h1><p>${esc(whenText(o, v.saju))}</p></div>`
+  h += sajuCard(v.saju)
+  h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">체로 거른 수</h2><div class="sieve">${funnelRows(v.funnel, '남은 이름')}</div><p class="note" style="margin-top:8px">남은 이름 가운데 점수가 높은 열 개를 봉했고, 결제하면 다음 열 개까지 스무 개를 펼칩니다.</p></div>`
+  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름</h2><p><b style="font-size:20px">${esc(v.current.fullHj)}</b> ${esc(v.current.full)} — 등급 <b style="color:var(--red)">${esc(v.current.grade)}(${esc(v.current.gradeKo)})</b></p><p class="note">어느 잣대에서 깎였는지는 결제 뒤 펼쳐 드립니다.</p></div>`
+  h += `<div class="card"><h2><img src="img/seal-empty.webp" alt="">봉한 이름</h2><div class="envs">${v.sealed.map((x, i) => `<div class="env"><img src="img/env.webp" alt=""><div class="l"><b>${ORD[i]} 이름</b>${esc(o.sur)}○○</div><div class="r"><b>${x.total}점</b>${esc(x.grade)}${msealHTML(i === 0 ? ['薦', ...x.seals] : x.seals)}</div></div>`).join('')}</div></div>`
+  h += priceCard(k) + miniLinks
+ }
+ $('#freeBody').innerHTML = h
+ $('#payBtn').addEventListener('click', pay)
+ payNote()
+}
+
+/* ───────── 잣대 하나 ───────── */
+const lvl = s => s >= 9.5 ? 5 : s >= 8 ? 4 : s >= 6.5 ? 3 : s >= 4.5 ? 2 : 1
+function ckHTML(c) {
+ const L = lvl(c.score)
+ return `<div class="ck"><div class="t"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><span class="sc">${Number(c.score).toFixed(c.score % 1 ? 1 : 0)}</span></div>
+ <div class="bar"><img src="img/gauge-${L}.webp" alt="" style="width:${L * 20}%"></div><p class="v">${esc(c.verdict)}</p><ul>${c.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`
+}
+
+/* ───────── 결제한 결과 ───────── */
+function cardHTML(x, i, pickable = true) {
+ const on = S.picks.includes(x)
+ return `<button type="button" class="nc" data-i="${i}" aria-label="${esc(x.full)} ${x.total}점 자세히"><span class="rk">${x.rank ? x.rank + '위' : ''}</span>
+  <span class="sq">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span><span class="ko">${esc(x.full)}</span>
+  <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span><span class="ms">${(x.rank === 1 ? ['薦', ...x.seals] : x.seals).map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}">`).join('')}</span>
+  <span class="kk">${esc(x.chars.map(c => c.k || (c.hun && c.hun[0]) || '').join(' · '))}</span>
+  ${pickable ? `<span class="pick" data-pick="${i}" role="checkbox" aria-checked="${on}" aria-label="견주기에 담기"><img src="img/${on ? 'ic-boxon' : 'ic-box'}.webp" alt=""></span>` : ''}</button>`
+}
+function renderFull() {
+ const v = S.full, o = S.input, k = v.kind
+ let h = ''
+ if (k === 'gamjeong') {
+  const n = v.name
+  h += `<div class="pageh"><h1>${esc(n.full)} — 이름 감정</h1><p>${esc(whenText(o, v.saju))}</p></div>
+  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
+  <p class="grade">총점 <b>${n.total}</b>점 · ${esc(n.grade)}(${esc(n.gradeKo)})</p>${sealsFig(n)}</div><img class="rb" src="img/rod-bot.webp" alt=""></div>`
+  h += detailCards(n, v.saju)
+  if (v.better && v.better.length) h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">같은 소리, 더 나은 한자</h2><p class="note">‘${esc(n.given)}’ 소리는 그대로 두고 한자만 바꾸면 점수가 오르는 짝입니다. 눌러서 자세히 보십시오.</p><div class="names" style="margin:10px 0 0">${v.better.map((x, i) => cardHTML(x, 'b' + i, false)).join('')}</div></div>`
+  h += `<button class="cta" type="button" id="toCert" style="margin-top:22px"><span class="dbtn">감명장 받기</span></button>`
+  h += sajuCard(v.saju) + miniLinks
+ } else {
+  const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
+  h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'} · 이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
+  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>`
+  h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j)).join('')}</div>`
+  h += `<div class="btns"><button type="button" id="again"><img src="img/bl-again.webp" alt="${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}"></button><button type="button" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true" style="opacity:.5"' : ''}><img src="img/bl-compare.webp" alt="나란히 견주기"></button></div>`
+  h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} 네모 칸을 눌러 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
+  h += sajuCard(v.saju)
+  if (k === 'rename') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">개명은 이렇게 합니다</h2><p>① 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 냅니다. 새 이름의 한글과 한자를 함께 적고, 바꾸려는 까닭을 밝힙니다.</p><p>② 법원이 허가하면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 신고가 끝나면 주민등록·여권·은행·보험 등의 이름을 차례로 바꿉니다.</p><p class="note">2024년 한 해 개명 허가는 8만 4천여 건이었습니다. 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
+  h += miniLinks
+ }
+ $('#fullBody').innerHTML = h
+ bindFull()
+}
+function bindFull() {
+ const v = S.full
+ $$('#fullBody .nc').forEach(b => b.addEventListener('click', e => {
+  const pk = e.target.closest('[data-pick]')
+  const i = b.dataset.i, x = String(i).startsWith('b') ? v.better[+i.slice(1)] : v.list[+i]
+  if (pk) {
+   e.stopPropagation()
+   const on = S.picks.includes(x)
+   if (!on && S.picks.length >= 3) return toast('견주기는 셋까지 담을 수 있습니다')
+   S.picks = on ? S.picks.filter(y => y !== x) : [...S.picks, x]
+   toast(on ? `${x.full} 뺐습니다` : `${x.full} 담았습니다 (${S.picks.length}/3)`, 1600)
+   return renderFull()
+  }
+  openSheet(x)
+ }))
+ const cur = $('[data-cur]'); cur && cur.addEventListener('click', () => openSheet(v.current))
+ const ag = $('#again'); ag && ag.addEventListener('click', () => { S.page = S.page ? 0 : 1; renderFull(); window.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }) })
+ const cm = $('#cmp'); cm && cm.addEventListener('click', () => { if (S.picks.length < 2) return toast('네모 칸을 눌러 이름을 둘 이상 담아 주십시오'); renderCmp(); show('cmp') })
+ const tc = $('#toCert'); tc && tc.addEventListener('click', () => openCert(v.name, 'gam'))
+}
+function sealsFig(x, top) {
+ const s = top ? ['薦', ...x.seals] : x.seals
+ return s.length ? `<div class="seals">${s.map(k => `<figure><img src="img/${SEALIMG[k][0]}.webp" alt="${k}"><figcaption>${SEALIMG[k][1]}</figcaption></figure>`).join('')}</div>` : ''
+}
+const RELIMG = { gen: ['arrow-gen', '살려 줌'], genr: ['arrow-gen', '살려 줌'], same: ['arrow-same', '같은 기운'], ctl: ['arrow-ctl', '부딪침'] }
+function flowHTML(names, seq, pairs) {
+ let h = '<div class="flow">'
+ seq.forEach((e, i) => {
+  h += `<div class="el"><img src="img/el-${EL[e] || 'to'}.webp" alt="${ELKO[e] || ''}"><span>${esc(names[i])} ${ELKO[e] || ''}</span></div>`
+  if (i < pairs.length) { const r = RELIMG[pairs[i]]; h += `<div class="ar"><img src="img/${r[0]}.webp" alt=""><span>${r[1]}</span></div>` }
+ })
+ return h + '</div>'
+}
+function detailCards(x, sj) {
+ const ck = Object.fromEntries(x.checks.map(c => [c.key, c]))
+ const WX = [0.8, 25.8, 50.2, 74.6]
+ let h = ''
+ if (ck.뜻 && ck.뜻.join) h += `<p class="join">${esc(ck.뜻.join)}</p>`
+ h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
+  ${x.sagyeok.map(g => `<p><b>${g.ko}(${g.k}) ${g.n}수</b> — ${esc(g.t)} <span class="note">${esc(g.age)}</span></p>`).join('')}
+  <p class="note">성 ${esc(x.surHj)} ${x.surWon}획 · ${x.chars.map(c => `${esc(c.h)} ${c.won}획`).join(' · ')} (원획)</p></div>`
+ const root = ck.뿌리, snd = ck.소리
+ const nm = [x.surHj.slice(-1), ...x.chars.map(c => c.h)]
+ h += `<div class="card"><h2><img src="img/icon-roots.webp" alt="">오행 흐름</h2><p class="flow-h">글자 뿌리(자원오행)</p>${flowHTML(nm, root.seq, root.flow)}`
+ if (snd && snd.per) {
+  const syl = [x.sur.slice(-1), ...[...x.given]]
+  h += `<p class="flow-h">소리 — 요즘 다수 학설</p>${flowHTML(syl, snd.per.운해.seq, snd.per.운해.pairs)}<p class="flow-h">소리 — 훈민정음 해례본</p>${flowHTML(syl, snd.per.해례.seq, snd.per.해례.pairs)}`
+ }
+ h += `</div><div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><div class="chk10">${x.checks.map(ckHTML).join('')}</div></div>`
+ return h
+}
+let sheetX = null
+function openSheet(x) {
+ sheetX = x
+ const isTop = x.rank === 1
+ $('#sheetBody').innerHTML = `<div class="plate"><img src="img/plate-gold.webp" alt=""><div class="tx"><b>${esc(x.fullHj)}</b><span>${esc(x.full)}</span></div></div>
+  <div class="score"><b>${x.total}</b><span>점 · ${esc(x.grade)}(${esc(x.gradeKo)})${x.rank ? ` · ${x.rank}위` : ''}</span></div>${sealsFig(x, isTop)}
+  ${detailCards(x, S.full.saju)}
+  <button class="cta" type="button" id="sheetCert"><img src="img/bd-cert.webp" alt="성명장 받기"></button>`
+ $('#sheet').classList.add('on'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'
+ history.pushState({ s: cur, sheet: 1 }, '')
+ $('#sheetCert').addEventListener('click', () => { const k = S.full.kind === 'gamjeong' ? 'gam' : 'seong'; closeSheet(); openCert(x, k) })
+}
+function closeSheet(fromPop) {
+ if (!$('#sheet').classList.contains('on')) return
+ $('#sheet').classList.remove('on'); document.body.style.overflow = ''
+ if (!fromPop && history.state && history.state.sheet) history.back()
+}
+$('#sheetX').addEventListener('click', () => closeSheet())
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet() })
+
+/* ───────── 견주기 ───────── */
+function renderCmp() {
+ const P = S.picks, n = P.length
+ const row = (label, f, best) => {
+  const vals = P.map(f), nums = vals.map(v => typeof v === 'number' ? v : null)
+  const mx = best ? Math.max(...nums.filter(v => v != null)) : null
+  return `<tr><th>${label}</th>${vals.map(v => `<td class="${best && v === mx ? 'best' : ''}">${typeof v === 'number' ? (v % 1 ? v.toFixed(1) : v) : esc(v)}</td>`).join('')}</tr>`
+ }
+ const C = x => Object.fromEntries(x.checks.map(c => [c.key, c]))
+ $('#cmpBody').innerHTML = `<div class="pageh"><h1>나란히 견주기</h1><p>담은 이름 ${n}개 · 붉은 글자가 그 줄에서 가장 높은 쪽입니다</p></div>
+  <div class="cmp" style="--n:${n}">${P.map(x => cardHTML(x, -1, false)).join('')}</div>
+  <div class="cmpt"><table>
+   ${row('총점', x => x.total, 1)}${row('등급', x => x.grade)}
+   ${['사주', '뿌리', '수리', '음양', '소리', '부름', '뜻', '흔함', '놀림'].map(k => row(C(P[0])[k].title, x => C(x)[k].score, 1)).join('')}
+   ${row('원·형·이·정', x => x.sagyeok.map(g => g.n).join(' · '))}
+   ${row('뜻', x => x.chars.map(c => c.k || (c.hun && c.hun[0])).join(' · '))}
+   ${row('채운 기운', x => x.chars.map(c => ELKO[c.el]).join(' · '))}
+  </table></div>
+  <p class="mini">견준 이름을 누르면 풀이가 펼쳐집니다.</p>`
+ $$('#cmpBody .nc').forEach((b, i) => b.addEventListener('click', () => openSheet(P[i])))
+}
+
+/* ───────── 성명장 · 감명장 ───────── */
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src })
+function wrapLines(ctx, text, maxW) {
+ const out = []; let line = ''
+ for (const w of String(text).split(' ')) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w } else line = t }
+ if (line) out.push(line); return out
+}
+async function drawCert(x, kind) {
+ const o = S.input, sj = S.full.saju
+ const bg = await loadImg(kind === 'gam' ? 'img/cert-gam.webp' : 'img/cert-seong.webp')
+ const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1536
+ const c = cv.getContext('2d'); c.drawImage(bg, 0, 0, 1024, 1536)
+ const FF = '"MSerif","Noto Serif KR",serif'
+ const allText = x.fullHj + x.full + '0123456789年月日時점격길흉수뜻채운기운태어난날사주총점등급원형이정음양력윤달시모름' + x.checks.map(k => k.title + k.verdict).join('')
+ try { await Promise.all([document.fonts.load(`700 150px ${FF}`, allText), document.fonts.load(`500 32px ${FF}`, allText)]) } catch (e) {}
+ c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = '#1e1915'
+ const hj = [...x.fullHj], ko = [...x.full], gap = hj.length > 3 ? 170 : 200
+ c.font = `700 148px ${FF}`; hj.forEach((ch, i) => c.fillText(ch, 512 + (i - (hj.length - 1) / 2) * gap, 440))
+ c.font = `700 52px ${FF}`; c.fillStyle = '#4b433a'; ko.forEach((ch, i) => c.fillText(ch, 512 + (i - (ko.length - 1) / 2) * gap, 530))
+ c.strokeStyle = 'rgba(169,50,34,.7)'; c.lineWidth = 2; c.beginPath(); c.moveTo(200, 580); c.lineTo(824, 580); c.stroke()
+ const when = whenText(o, sj).replace(/ · (남자|여자)$/, '')
+ const pil = sj.cols.slice().reverse().map((p, i) => p ? p.s + p.b + ['年', '月', '日', '時'][i] : '').filter(Boolean).join(' ')
+ const rows = kind === 'gam'
+  ? [['태어난 날', when], ['사주', pil], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n}`).join(' ') + ' — ' + (x.sagyeok.every(g => g.gil) ? '네 격 모두 길' : `흉한 격 ${x.sagyeok.filter(g => !g.gil).length}`)]]
+  : [['태어난 날', when], ['사주', pil], ['채운 기운', `${ELKO[sj.yong]}(${sj.yong}) — ` + x.chars.map(k => `${k.h} ${ELKO[k.el]}`).join(' · ')], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n} ${g.nm.replace('格', '')}`).join(' · ')], ['뜻', (x.checks.find(k => k.key === '뜻').join || '').replace(/ 이름입니다\.$/, ' 이름')], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`]]
+ let y = 672; c.textAlign = 'left'
+ for (const [k, val] of rows) {
+  c.font = `700 32px ${FF}`; c.fillStyle = '#857a6c'; c.fillText(k, 140, y)
+  c.font = `500 35px ${FF}`; c.fillStyle = '#1e1915'
+  const ls = wrapLines(c, val, 590); ls.forEach((l, i) => c.fillText(l, 310, y + i * 50)); y += Math.max(1, ls.length) * 50 + 26
+ }
+ if (kind === 'gam') {
+  y += 10; c.font = `500 31px ${FF}`
+  x.checks.forEach((k, i) => { const col = i % 2, r = Math.floor(i / 2); c.fillStyle = '#1e1915'; c.fillText(`${k.title}`, 140 + col * 385, y + r * 50); c.fillStyle = k.score >= 7 ? '#4f6b3a' : '#a93222'; c.textAlign = 'right'; c.fillText(String(k.score), 495 + col * 385, y + r * 50); c.textAlign = 'left' })
+ }
+ const t = new Date(), today = `${t.getFullYear()}년 ${t.getMonth() + 1}월 ${t.getDate()}일`
+ c.textAlign = 'center'; c.font = `500 30px ${FF}`; c.fillStyle = '#4b433a'; c.fillText(`${today} ${kind === 'gam' ? '재어 드림' : '지어 드림'}`, 512, 1250)
+ return cv.toDataURL('image/png')
+}
+let certURL = '', certName = ''
+async function openCert(x, kind) {
+ toast('먹을 묻혀 쓰는 중입니다', 1500)
+ try { certURL = await drawCert(x, kind) } catch (e) { console.error(e); return toast('성명장을 그리지 못했습니다. 다시 눌러 주십시오') }
+ certName = `묵산작명원-${kind === 'gam' ? '감명장' : '성명장'}-${x.full}.png`
+ $('#certImg').src = certURL; $('#certImg').alt = `${kind === 'gam' ? '감명장' : '성명장'} ${x.fullHj} ${x.full}`
+ show('cert')
+}
+$('#certSave').addEventListener('click', () => { if (!certURL) return; const a = document.createElement('a'); a.href = certURL; a.download = certName; document.body.appendChild(a); a.click(); a.remove(); toast('저장이 안 되면 그림을 길게 눌러 저장하십시오', 3200) })
+$('#certPrint').addEventListener('click', () => window.print())
+
+/* ───────── 결제 ───────── */
+const payNote = () => {
+ const e = $('#paynote'); if (!e) return
+ const t = PAYCFG.mode === 'owner' ? '주인 열람 · 결제 없이 펼쳐집니다' : PAYCFG.mode === 'toss' ? (PAYCFG.live ? '' : '시험 결제창 · 실제로 돈이 나가지 않습니다') : PAYCFG.mode === 'closed' ? '결제 창구 점검 중입니다' : '데모판 · 실제 결제 없이 펼쳐집니다'
+ e.textContent = t; e.hidden = !t
+}
+const loadPayCfg = () => fetch('api/order' + (WANT_TOSS ? '?pay=toss' : ''), { cache: 'no-store' }).then(r => r.json()).then(j => { if (j && j.ok) { PAYCFG = j; PRICE = j.price || PRICE } payNote(); return PAYCFG }).catch(() => PAYCFG)
+let payCfgP = loadPayCfg()
+const why = e => { if (!e) return 'UNKNOWN'; const n = e.name && e.name !== 'Error' && e.name !== 'TypeError' ? e.name : ''; return String(e.code || n || e.message || 'UNKNOWN').slice(0, 60) }
+const loadToss = () => new Promise((ok, no) => { if (window.TossPayments) return ok(window.TossPayments); const sc = document.createElement('script'); sc.src = 'https://js.tosspayments.com/v2/standard'; sc.onload = () => window.TossPayments ? ok(window.TossPayments) : no(new Error('toss')); sc.onerror = () => no(new Error('TOSS_SDK')); document.head.appendChild(sc) })
+let paying = false, payWin = null
+async function paidOK(r) { S.full = r.eng; S.page = 0; S.picks = []; renderFull(); show('full', 'replace') }
+async function pay() {
+ if (paying) return; paying = true
+ const btn = $('#payBtn'); btn && (btn.disabled = true)
+ try {
+  await payCfgP
+  const rs = await post('api/order', { action: 'restore', input: S.input }).catch(() => null)
+  if (rs && rs.ok) { toast('이미 결제한 풀이입니다 · 다시 결제하지 않고 열어 드립니다'); return paidOK(rs) }
+  const c = await post('api/order', { action: 'create', input: S.input, from: FROM, test: WANT_TOSS })
+  if (!c || !c.ok) return toast(c && c.message || '결제를 시작하지 못했습니다. 다시 눌러 주십시오')
+  if (c.mode === 'toss') {
+   SS.set('msPend', { orderId: c.orderId, ticket: c.ticket, input: S.input, at: Date.now() })
+   const TP = await loadToss(), widgets = TP(c.clientKey).widgets({ customerKey: TP.ANONYMOUS || 'ANONYMOUS' })
+   await widgets.setAmount({ value: c.amount, currency: 'KRW' })
+   const back = location.origin + location.pathname + '?' + (WANT_TOSS ? 'pay=toss&' : '')
+   try { payWin && payWin.destroy && payWin.destroy() } catch (e) {} payWin = null
+   const win = await widgets.renderPaymentWindow({ orderName: c.orderName }); payWin = win
+   win.on('cancel', () => { payWin = null; SS.del('msPend') })
+   win.on('paymentRequest', async () => {
+    try { await widgets.requestPayment({ orderId: c.orderId, orderName: c.orderName, successUrl: back + 'toss=ok', failUrl: back + 'toss=fail' }) }
+    catch (e) { SS.del('msPend'); const k = why(e); console.error('[결제]', k, e); toast(/취소|CANCEL/i.test(k) ? '결제를 취소했습니다. 돈은 빠져나가지 않았습니다' : '결제를 마치지 못했습니다. 돈은 빠져나가지 않았습니다 (' + k + ')') }
+   })
+   return
+  }
+  if (c.mode === 'demo') toast('데모판이라 결제 없이 펼칩니다', 1800)
+  const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: c.orderId, paymentKey: (c.mode === 'owner' ? 'owner_' : 'demo_') + c.orderId, amount: c.amount, ticket: c.ticket, input: S.input, from: FROM }))
+  if (!r || !r.ok) { history.back(); return toast(r && r.message || '풀이를 펼치지 못했습니다. 다시 눌러 주십시오') }
+  await paidOK(r)
+ } catch (e) { SS.del('msPend'); const k = why(e); console.error('[결제]', k, e); toast('결제창을 열지 못했습니다. 돈은 빠져나가지 않았습니다 (' + k + ')') }
+ finally { paying = false; btn && (btn.disabled = false) }
+}
+/* 토스 결제창에서 돌아왔을 때 */
+async function tossReturn() {
+ const t = Q.get('toss'); if (!t) return false
+ const P = SS.get('msPend'); history.replaceState({ s: 'home' }, '', location.pathname + (WANT_TOSS ? '?pay=toss' : ''))
+ if (!P || P.orderId !== Q.get('orderId')) return false
+ S.input = P.input; S.kind = P.input.kind
+ if (t !== 'ok') { SS.del('msPend'); toast((/CANCEL/i.test(Q.get('code') || '') ? '결제를 취소했습니다.' : '결제가 끝나지 않았습니다.') + ' 돈은 빠져나가지 않았습니다'); const f = await post('api/name', { input: S.input }).catch(() => null); if (f && f.ok) { S.free = f.view; renderFree(); show('free') } return true }
+ const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: P.orderId, paymentKey: Q.get('paymentKey'), amount: Number(Q.get('amount')), ticket: P.ticket, input: S.input, from: FROM, test: WANT_TOSS }))
+ SS.del('msPend')
+ if (!r || !r.ok) { show('home', 'replace'); toast((r && r.message || '결제 승인을 마치지 못했습니다') + ' · 승인되지 않은 결제는 돈이 빠져나가지 않습니다', 4200); return true }
+ await paidOK(r); return true
+}
+/* 주인 열쇠: ?주인=… 으로 들어오면 이 기기에 표를 심고 주소에서 지운다 */
+async function ownerKey() {
+ const v = Q.get('owner') || Q.get('주인'); if (!v) return
+ const q = new URLSearchParams(location.search); q.delete('owner'); q.delete('주인')
+ history.replaceState({ s: 'home' }, '', location.pathname + (q.toString() ? '?' + q : ''))
+ try { const r = await post('api/order', { action: '주인', 값: v }); if (r && r.주인) { payCfgP = loadPayCfg(); toast('주인으로 들어왔습니다 · 결제 없이 펼쳐집니다') } } catch (e) {}
+}
+
+/* ───────── 약관 ───────── */
+const polOpen = k => { $('#pol').classList.add('on'); $$('.polt button').forEach(b => b.classList.toggle('on', b.dataset.pt === k)); $$('.polb section').forEach(s => s.classList.toggle('on', s.dataset.ps === k)); $('.polb').scrollTop = 0 }
+document.addEventListener('click', e => {
+ const a = e.target.closest('[data-pol]'); if (a) { e.preventDefault(); if (a.dataset.pol === 'x') $('#pol').classList.remove('on'); else polOpen(a.dataset.pol); return }
+ const t = e.target.closest('[data-pt]'); if (t) polOpen(t.dataset.pt)
+})
+addEventListener('keydown', e => { if (e.key === 'Escape') { $('#pol').classList.remove('on'); closeSheet() } })
+
+ownerKey().then(tossReturn)
+})()

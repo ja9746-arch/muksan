@@ -225,12 +225,19 @@ export function sajuOf(b) {
     yong = EL.slice().sort((x, y) => cnt[x] - cnt[y] || ELI[x] - ELI[y])[0]
     why = `바탕과 둘레 기운이 고르게 맞섭니다. 가장 엷은 ${ELKO[yong]} 기운을 이름으로 채워 고르기를 맞춥니다.`
   }
-  const hee = genBy(yong), gi = ctlBy(yong)
+  /* 희신 — 용신을 거드는 기운. 넘치는 쪽(바탕과 바탕을 살리는 기운)이 희신이 되지 않게 고른다.
+     약하면 인성·비겁 가운데 용신이 아닌 쪽, 강하면 설기(식상)·재성 가운데 용신이 아닌 쪽(관성이 용신이면 재성) */
+  let hee
+  if (strong === '약') hee = yong === dm ? genBy(dm) : dm
+  else if (strong === '강') hee = yong === gen(dm) ? ctl(dm) : gen(dm)
+  else { const g = genBy(yong); hee = (g === dm || g === genBy(dm)) && cnt[g] >= total * 0.3 ? gen(yong) : g }
+  const gi = ctlBy(yong)
   // 조후 — 겨울 달은 불, 여름 달은 물
   const mb = mo.branch.index
   let johu = null
   if ([11, 0, 1].includes(mb) && cnt['火'] < 1.5) johu = '火'
   if ([5, 6, 7].includes(mb) && cnt['水'] < 1.5) johu = '水'
+  if (johu === gi) johu = null   // 조후가 꺼릴 기운과 겹치면 억부(용신)를 따른다 — 한 사주에 '채워라'와 '피하라'를 같이 말하지 않는다
   const lack = EL.filter(e => raw[e] === 0)
   const over = EL.filter(e => cnt[e] >= total * 0.38)
   return {
@@ -304,7 +311,11 @@ export const WISH = {
 
 /* ───────── 잣대 ───────── */
 const W = { 사주: 15, 뿌리: 8, 수리: 15, 음양: 8, 소리: 12, 부름: 8, 뜻: 12, 인명: 10, 흔함: 4, 놀림: 8 }
-const BADHUN = /죽|병들|슬플|근심|망할|어두울|울(?!타리)|거짓|독할|악할|흉할|해칠|도둑|미칠|어리석|천할|괴로울|가난|외로울|버릴|잃을|쇠할|원망|시기할|무덤|상복|재앙|귀신|벌레|똥|오줌|종(?=$)|요사|간사|음란|사나울|게으를|더러울|부끄러울|싸울|칠(?=$)|베일|찌를|아플|짐승|쥐|뱀|모자랄|헛될|그칠|막힐|떨어질|흩어질/
+/* 어두운 뜻 — 훈(뜻) 하나하나를 따로 본다. '고울'의 '울'처럼 낱말 속에 든 글자로 잘못 걸리지 않게
+   긴 말은 들어 있으면, 한 글자 말은 그 낱말이 통째로 같을 때만 건다 */
+const BADSUB = /죽을|병들|슬플|슬퍼할|근심|망할|어두울|거짓|독할|악할|흉할|해칠|도둑|미칠|어리석|천할|괴로울|가난|외로울|버릴|잃을|쇠할|원망|시기할|무덤|상복|재앙|귀신|벌레|요사|간사|음란|사나울|게으를|더러울|부끄러울|싸울|찌를|아플|짐승|모자랄|헛될|막힐|떨어질|흩어질|울부짖|곡할|죄|형벌|오줌|똥/
+const BADWORD = new Set(['울', '쥐', '칠', '피', '병', '뱀', '종', '때릴', '벨', '베일', '그칠', '망'])
+const badHun = hun => (hun || []).some(w => BADSUB.test(w) || BADWORD.has(w.trim()))
 const FEM = new Set([...'娟婉姬娥姸娜媛嬉妍姝婷嫣嬌媚'])
 const MAS = new Set([...'雄勇武剛彪虎猛豪將'])
 const teaseList = TEASE.split(/\s+/).filter(Boolean)
@@ -410,7 +421,7 @@ export function evaluate(n, s) {
   }
   // ⑦ 뜻
   {
-    const pc = gs.map(g => g.missing ? 0 : POOLKEY.has(g.h) ? 10 : BADHUN.test(g.hun.join(' ')) ? 2 : 7)
+    const pc = gs.map(g => g.missing ? 0 : POOLKEY.has(g.h) ? 10 : badHun(g.hun) ? 2 : 7)
     let sc = pc.reduce((a, b) => a + b, 0) / pc.length
     const notes = []
     if (n.sex === '남' && ghs.some(h => FEM.has(h))) { notes.push('여자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
@@ -418,7 +429,7 @@ export function evaluate(n, s) {
     sc = Math.max(0, Math.round(sc * 10) / 10)
     const ks = gs.map(g => POOLKEY.get(g.h) || (g.hun[0] || '').replace(/(을|ㄹ)$/, ''))
     const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 ? `‘${ks[0]}’를 한 글자에 담은 이름입니다.` : ''
-    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.join(', ') + ' ' + gks[i] : '뜻을 찾지 못했습니다'}${BADHUN.test(g.hun.join(' ')) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
+    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.map(w => w + ' ' + gks[i]).join(', ') : '뜻을 찾지 못했습니다'}${!POOLKEY.has(g.h) && badHun(g.hun) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
   }
   // ⑧ 인명용 한자
   {
@@ -430,7 +441,11 @@ export function evaluate(n, s) {
   {
     const r = rank(n.given, n.sex)
     const sc = !r ? 10 : r.rank <= 10 ? 7 : 8
-    checks.push({ key: '흔함', no: 9, title: '흔한 정도', icon: 'tags', score: sc, rank: r, verdict: r ? `2025년에 태어난 ${n.sex === '남' ? '남자' : '여자'} 아기 이름 ${r.rank}위입니다.` : '2025년 출생신고 상위 스무 이름 안에 들지 않습니다.', lines: r ? [`한 해 ${r.count.toLocaleString('ko-KR')}명이 이 이름으로 신고됐습니다. 같은 해 ${n.sex === '남' ? '남자' : '여자'} 아기 ${Math.round(r.total / r.count)}명 가운데 1명꼴입니다.`, '같은 반에 같은 이름이 있을 수 있는 정도입니다.'] : ['같은 이름과 자주 겹치지는 않을 소리입니다. (한자까지 같은 이름은 훨씬 드뭅니다)'] })
+    const kid = n.by == null || n.by >= 2020
+    checks.push({ key: '흔함', no: 9, title: '흔한 정도', icon: 'tags', score: sc, rank: r,
+      verdict: r ? `2025년에 태어난 ${n.sex === '남' ? '남자' : '여자'} 아기 이름 ${r.rank}위입니다.` : '2025년에 태어난 아기 이름 상위 스물 안에 들지 않습니다.',
+      lines: r ? [`한 해 ${r.count.toLocaleString('ko-KR')}명이 이 이름으로 신고됐습니다. 같은 해 ${n.sex === '남' ? '남자' : '여자'} 아기 ${Math.round(r.total / r.count)}명 가운데 1명꼴입니다.`, kid ? '같은 반에 같은 이름이 있을 수 있는 정도입니다.' : '요즘 아이들 사이에서 많이 불리는 소리라 젊은 이름으로 들립니다.']
+        : [kid ? '같은 반에서 이름이 겹칠 일이 드문 소리입니다. 한자까지 같은 이름은 훨씬 드뭅니다.' : '요즘 태어나는 아이들 이름과 자주 겹치지 않는 소리입니다. 이 순위는 2025년 출생신고로만 본 것입니다.'] })
   }
   // ⑩ 놀림·피하는 글자
   {
@@ -492,6 +507,7 @@ export function generate(o, s) {
     for (const a of A) for (const b of B) {
       if (a.h === b.h) continue
       const ra = BY.get(a.h), rb = BY.get(b.h); if (!ra || !rb) continue
+      if ((sex === '남' && (FEM.has(a.h) || FEM.has(b.h))) || (sex === '여' && (MAS.has(a.h) || MAS.has(b.h)))) continue
       funnel.이름글자++
       const sg = sagyeok(surWon, [ra.won, rb.won]); if (!sg.every(x => x.gil)) continue
       funnel.수리++
@@ -502,7 +518,7 @@ export function generate(o, s) {
       if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(e => e === s.yong || e === s.hee || e === s.johu)) continue
       if (surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
       funnel.사주++
-      const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex }, s)
+      const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex, by: o.y }, s)
       if (ev.checks.find(c => c.key === '놀림').score < 6 || ev.checks[0].score < 6.5) continue
       const bonus = [a.h, b.h].filter(h => wish.has(h)).length * 3
       const key = ev.total + bonus - (listed.has(nm) ? 0 : 15) + (hash(o.sur + nm + a.h + b.h + o.y + o.m + o.d) % 100) / 1000
@@ -514,7 +530,9 @@ export function generate(o, s) {
   // 첫 자가 한 소리로 쏠리지 않게 — 같은 첫 자는 열 개 안에 셋까지만
   const pick = [], rest = [], first = {}
   for (const x of best) { const f = x.ev.given[0]; if ((first[f] || 0) < 3 && pick.length < 10) { pick.push(x); first[f] = (first[f] || 0) + 1 } else rest.push(x) }
-  const list = [...pick, ...rest].slice(0, 20).map((x, i) => ({ ...x.ev, rank: i + 1, wishHit: x.wishHit, listed: x.listed }))
+  // 보여 줄 때는 열 개씩 점수 순으로 — 바라는 뜻과 첫 자 고르기는 '어느 이름이 열 안에 드나'에만 쓴다
+  const byTotal = (a, b) => b.ev.total - a.ev.total || b.key - a.key
+  const list = [...pick.sort(byTotal), ...rest.slice(0, 20 - pick.length).sort(byTotal)].slice(0, 20).map((x, i) => ({ ...x.ev, rank: i + 1, wishHit: x.wishHit, listed: x.listed }))
   funnel.남은이름 = best.length
   return { list, funnel }
 }
@@ -527,7 +545,7 @@ function betterHanja(o, s, cur) {
   const out = []
   for (const a of opts[0]) for (const b of opts[1]) {
     if (a + b === o.givenHj || a === b) continue
-    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: a + b, sex: o.sex }, s)
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: a + b, sex: o.sex, by: o.y }, s)
     if (ev.total > cur.total) out.push(ev)
   }
   return out.sort((x, y) => y.total - x.total).slice(0, 3)
@@ -543,12 +561,12 @@ export function freeView(o) {
   const s = sajuOf(birthOf(o)); if (!s) { const e = new Error('BAD_BIRTH'); e.code = 'BAD_BIRTH'; throw e }
   if (o.kind === 'manse') return { kind: 'manse', saju: sajuView(s) }
   if (o.kind === 'gamjeong') {
-    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s)
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s)
     return { kind: o.kind, saju: { cols: s.cols, hourKnown: s.hourKnown, cnt: s.cnt, raw: s.raw, dmHj: s.dmHj, dm: s.dm, elko: ELKO }, name: { full: ev.full, fullHj: ev.fullHj, chars: ev.chars },
       checks: ev.checks.map(c => FREE_KEYS.includes(c.key) ? c : sealCheck(c)), sealedCount: ev.checks.filter(c => !FREE_KEYS.includes(c.key)).length }
   }
   const g = generate(o, s)
-  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s) : null
+  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
   return {
     kind: o.kind, saju: sajuView(s), funnel: g.funnel, count: g.list.length,
     sealed: g.list.slice(0, 10).map(x => ({ total: x.total, grade: x.grade, seals: x.seals })),
@@ -559,11 +577,11 @@ export function freeView(o) {
 export function fullView(o) {
   const s = sajuOf(birthOf(o)); if (!s) { const e = new Error('BAD_BIRTH'); e.code = 'BAD_BIRTH'; throw e }
   if (o.kind === 'gamjeong') {
-    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s)
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s)
     return { kind: o.kind, saju: sajuView(s), name: ev, better: betterHanja(o, s, ev) }
   }
   const g = generate(o, s)
-  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s) : null
+  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
   return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list, current: cur }
 }
 export const PRODUCTS = ['baby', 'rename', 'gamjeong']
