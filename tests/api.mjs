@@ -24,6 +24,7 @@ let bad = 0
 const ok = (c, msg) => { if (!c) { bad++; console.log('✗', msg) } else console.log('·', msg) }
 
 const baby = { kind: 'baby', sex: '남', cal: '양력', y: 2026, m: 3, d: 14, h: 9, mi: 30, sur: '김', surHj: '金' }
+const ren = { kind: 'rename', sex: '남', cal: '양력', y: 1991, m: 4, d: 23, h: 22, mi: 0, sur: '김', surHj: '金', given: '민철', givenHj: '敏哲' }
 const gam = { kind: 'gamjeong', sex: '여', cal: '음력', y: 1995, m: 8, d: 2, h: null, sur: '이', surHj: '李', given: '서연', givenHj: '瑞姸' }
 
 const s = await call(name, 'GET', null, '/api/name?sur=1')
@@ -45,7 +46,7 @@ ok(fm.json?.ok && fm.json.view.saju.cols[1].s === '癸' && fm.json.view.saju.col
 const cfg = await call(order, 'GET', null, '/api/order')
 ok(cfg.json?.mode === 'demo' && cfg.json.price.gamjeong === PRICE.gamjeong, `결제 방식 ${cfg.json?.mode}`)
 
-for (const [inp, label] of [[baby, '아기 이름'], [gam, '이름 감정']]) {
+for (const [inp, label] of [[baby, '아기 이름'], [gam, '이름 감정'], [ren, '개명']]) {
   const c = await call(order, 'POST', { action: 'create', input: inp, from: 'test' })
   ok(c.json?.ok && /^ms\d{8}/.test(c.json.orderId) && c.json.amount === PRICE[inp.kind], `${label} 주문 ${c.json?.orderId} ${c.json?.amount}`)
   const r0 = await call(order, 'POST', { action: 'restore', input: inp })
@@ -56,7 +57,7 @@ for (const [inp, label] of [[baby, '아기 이름'], [gam, '이름 감정']]) {
   const b2 = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: c.json.amount, ticket: c.json.ticket, input: other })
   ok(!b2.json?.ok, `${label} — 다른 생일로 남의 표를 쓰면 안 됨`)
   const cf = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: c.json.amount, ticket: c.json.ticket, input: inp })
-  ok(cf.json?.ok && (inp.kind === 'baby' ? cf.json.eng.list.length === 20 && cf.json.eng.list[0].checks.length === 10 : cf.json.eng.name.checks.every(x => !x.sealed && typeof x.score === 'number')), `${label} — 승인되면 풀이 전부가 온다`)
+  ok(cf.json?.ok && (inp.kind !== 'gamjeong' ? cf.json.eng.list.length === 20 && cf.json.eng.list[0].checks.length === 10 : cf.json.eng.name.checks.every(x => !x.sealed && typeof x.score === 'number')), `${label} — 승인되면 풀이 전부가 온다`)
   const r1 = await call(order, 'POST', { action: 'restore', input: inp })
   ok(r1.json?.ok, `${label} — 새로 고침 뒤 다시 열린다`)
 }
@@ -66,6 +67,15 @@ ok(!!jar.ms_paid, '결제 증표 쿠키가 심긴다')
   const c = await call(order, 'POST', { action: 'create', input: gam })
   const x = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: PRICE.gamjeong, ticket: c.json.ticket, input: { ...baby, d: 20 } })
   ok(!x.json?.ok, '4,900원 표로 19,900원 상품을 못 연다')
+}
+// 값 — 개명 29,900원, 아기 19,900원, 감정 4,900원. 아기 값 표로 개명을 못 연다
+ok(PRICE.rename === 29900 && PRICE.baby === 19900 && PRICE.gamjeong === 4900, `값 상수 ${PRICE.gamjeong}·${PRICE.baby}·${PRICE.rename}`)
+{
+  const c = await call(order, 'POST', { action: 'create', input: { ...baby, d: 21 } })
+  const x = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: PRICE.baby, ticket: c.json.ticket, input: { ...ren, d: 24 } })
+  ok(!x.json?.ok, '19,900원(아기) 표로 29,900원 개명을 못 연다')
+  const y = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: 19900, ticket: c.json.ticket, input: { ...baby, d: 21 } })
+  ok(y.json?.ok, '같은 표·같은 값이면 아기 이름은 열린다(위 거절이 값 때문임을 확인)')
 }
 
 // 운영 — 대문(100gwi.com)을 거쳐 오면 열쇠가 없을 때 닫힌다

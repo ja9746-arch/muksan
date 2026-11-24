@@ -28,7 +28,7 @@ const TEN = [
  ['tags', '흔한 정도', '2025년 출생신고 순위'], ['scale', '놀림·피하는 글자', '놀림말·불용문자'],
 ]
 const KIND = { baby: '아기 이름 짓기', rename: '개명할 이름 짓기', gamjeong: '지어 둔 이름 감정', manse: '무료 만세력' }
-let PRICE = { baby: 19900, rename: 19900, gamjeong: 4900 }, HC = 9089, SURN = new Map()
+let PRICE = { baby: 19900, rename: 29900, gamjeong: 4900 }, HC = 9089, SURN = new Map()
 let PAYCFG = { mode: 'demo', price: PRICE }
 
 /* ───────── 장면 ───────── */
