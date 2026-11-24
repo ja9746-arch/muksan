@@ -338,10 +338,10 @@ function guideHTML(g, n, withCta = true) {
 const HN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
 const meanLine = x => x.chars.map(c => c.k || (c.hun && c.hun[0]) || '').join(' · ')
 /* 이름 한 장 — 한지 명첩. 순위는 주묵 낙관, 한자는 원상 안에 세로로 */
-function cardHTML(x, i, pickable = true, feat = false) {
+function cardHTML(x, i, pickable = true, feat = false, wide = false) {
  const on = S.picks.includes(x)
  const seals = (x.rank === 1 ? ['薦', ...x.seals] : x.seals).filter(s => !(feat && s === '薦'))
- return `<article class="nc${feat ? ' feat' : ''}"><button type="button" class="nc-open" data-i="${i}" aria-label="${esc(x.full)} ${x.total}점 풀이 펼치기">
+ return `<article class="nc${feat ? ' feat' : wide ? ' feat wide' : ''}"><button type="button" class="nc-open" data-i="${i}" aria-label="${esc(x.full)} ${x.total}점 풀이 펼치기">
   ${x.rank ? `<span class="rk" aria-hidden="true">${HN[x.rank] || x.rank}</span>` : ''}
   <span class="sq"><img class="enso" src="img/enso.webp" alt="" aria-hidden="true">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span>
   <span class="info">${feat ? `<span class="cheon"><img src="img/seal-cheon.webp" alt="薦">묵산이 첫째로 천거</span>` : ''}
@@ -371,7 +371,9 @@ function renderFull() {
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
   if (list.some(x => x.relaxed)) h += `<p class="mini" style="margin:12px 18px 0;text-align:left">돌림자 ‘${esc(o.dolKo || '')}’가 성과 소리가 부딪쳐, 엄한 잣대를 다 넘는 이름이 스물이 안 됩니다. 소리 오행을 점수로만 보고 사격 넷 가운데 셋이 길한 이름으로 나머지를 채웠습니다(점수에 그대로 드러납니다).</p>`
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
-  h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j, true, x.rank === 1)).join('')}</div>`
+  // 1위가 한 줄을 다 쓰면 나머지가 홀수 — 끝 장도 넓게 펴서 외톨이 칸을 없앤다
+  const hasFeat = page.some(x => x.rank === 1), oddTail = hasFeat && (page.length - 1) % 2 === 1
+  h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j, true, x.rank === 1, oddTail && j === page.length - 1)).join('')}</div>`
   h += `<div class="btns"><button type="button" id="again"><img src="img/bl-again.webp" alt="${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}"></button><button type="button" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true" style="opacity:.5"' : ''}><img src="img/bl-compare.webp" alt="나란히 견주기"></button></div>`
   h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} ‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
   h += sajuCard(v.saju)
@@ -409,7 +411,8 @@ function flowHTML(names, seq, pairs) {
  let h = '<div class="flow">'
  seq.forEach((e, i) => {
   h += `<div class="el"><img src="img/el-${EL[e] || 'to'}.webp" alt="${ELKO[e] || ''}"><span>${esc(names[i])} ${ELKO[e] || ''}</span></div>`
-  if (i < pairs.length) { const r = RELIMG[pairs[i]]; h += `<div class="ar"><img src="img/${r[0]}.webp" alt=""><span>${r[1]}</span></div>` }
+  // 뒤 글자가 앞 글자를 살리면(genr) 화살을 뒤집어 뒤에서 앞으로 가리킨다
+  if (i < pairs.length) { const r = RELIMG[pairs[i]]; h += `<div class="ar${pairs[i] === 'genr' ? ' rev' : ''}"><img src="img/${r[0]}.webp" alt=""><span>${r[1]}</span></div>` }
  })
  return h + '</div>'
 }

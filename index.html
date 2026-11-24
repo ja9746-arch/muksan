@@ -155,12 +155,12 @@ a{color:inherit}
 .grind{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;position:relative;overflow:hidden;background:var(--paper) url(img/bg-paper.webp) center/cover}
 .stage{position:relative;width:260px;height:330px}
 .stage .enso{position:absolute;left:50%;top:0;width:250px;transform:translateX(-50%);opacity:.9;animation:spin 9s linear infinite}
-.stage .yeon{position:absolute;left:50%;bottom:0;width:150px;transform:translateX(-50%)}
-.stage .muk{position:absolute;left:50%;bottom:70px;width:44px;transform-origin:50% 90%;animation:rub 1.4s ease-in-out infinite}
-.stage .blot{position:absolute;left:50%;top:52px;width:150px;transform:translateX(-50%) scale(.2);opacity:0;animation:bleed 3s ease-out infinite}
+.stage .yeon{position:absolute;left:50%;bottom:0;width:150px;transform:translateX(-50%);filter:drop-shadow(0 10px 12px rgba(20,15,10,.28))}
+.stage .muk{position:absolute;left:50%;bottom:34px;width:40px;transform-origin:50% 95%;filter:brightness(1.6) contrast(1.05) drop-shadow(3px 6px 5px rgba(20,15,10,.45));animation:rub 1.4s ease-in-out infinite}
+.stage .blot{position:absolute;left:50%;top:196px;width:250px;mix-blend-mode:multiply;transform:translateX(-50%) scale(.2);opacity:0;animation:bleed 3s ease-out infinite}
 @keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
 @keyframes rub{0%,100%{transform:translate(-80%,0) rotate(-16deg)}50%{transform:translate(-20%,-6px) rotate(-8deg)}}
-@keyframes bleed{0%{opacity:0;transform:translateX(-50%) scale(.2)}30%{opacity:.5}100%{opacity:0;transform:translateX(-50%) scale(1.15)}}
+@keyframes bleed{0%{opacity:0;transform:translateX(-50%) scale(.4)}35%{opacity:.28}100%{opacity:0;transform:translateX(-50%) scale(1.1)}}
 .say{margin-top:26px;font-size:19px;font-weight:700;min-height:1.8em}
 .say2{margin-top:6px;font-size:14px;color:var(--mute);min-height:1.6em}
 
@@ -197,7 +197,7 @@ a{color:inherit}
 .book .cell b{font-size:clamp(22px,7.4vw,34px);line-height:1.1;font-weight:700}
 .book .cell i{font-style:normal;font-size:11px;color:var(--mute);margin-top:2px}
 .book .cell.dm b{color:var(--red)}
-.book .lab{position:absolute;width:10.2%;text-align:center;font-size:11.5px;color:var(--ink2);top:20.2%}
+.book .lab{position:absolute;width:10.2%;text-align:center;font-size:11px;line-height:1;color:var(--ink2);top:19.4%}
 
 /* 봉한 이름 */
 .envs{display:grid;gap:10px;margin-top:6px}
@@ -291,6 +291,10 @@ a{color:inherit}
 .nc.feat .ko{font-size:22px;margin-top:10px}
 .nc.feat .sc b{font-size:32px}
 .nc.feat .pick{margin:0 14px 13px}
+.nc.wide{border-color:rgba(163,132,63,.75)}
+.nc.wide .sq b{font-size:clamp(40px,12vw,54px)}
+.nc.wide .ko{font-size:20px}
+.nc.wide .sc b{font-size:28px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 14px 0}
 .btns button img{width:100%}
 
@@ -327,6 +331,7 @@ a{color:inherit}
 .flow .el span{display:block;font-size:12px;color:var(--ink2)}
 .flow .ar{width:54px;text-align:center}
 .flow .ar img{width:54px;height:auto}
+.flow .ar.rev img{transform:scaleX(-1)}
 .flow .ar span{display:block;font-size:11px;color:var(--mute)}
 .flow-h{font-size:13.5px;color:var(--mute);text-align:center;margin-top:12px}
 
