@@ -1,0 +1,569 @@
+/* 묵산작명원 엔진 — 이름을 짓고, 지어 둔 이름을 감정한다.
+ *
+ * 사주 셈은 백귀사주와 같은 saju-core.js 를 그대로 쓴다(손대지 않는다). 여기서 하는 것은
+ * 그 여덟 글자를 다섯 기운으로 세어 이름이 채울 기운을 정하고, 이름을 열 가지 잣대로 재는 일이다.
+ *
+ * 열 가지 잣대
+ *   ① 사주 보완   이름 글자의 자원오행이 사주에 모자란 기운(용신·희신)을 채우나
+ *   ② 글자 뿌리   성 → 이름 첫 자 → 끝 자의 자원오행이 서로 살리나
+ *   ③ 수리 사격   원·형·이·정 네 격이 81수에서 길한 수인가
+ *   ④ 음양        획수의 홀짝이 한쪽으로 몰리지 않았나
+ *   ⑤ 소리 오행   첫소리의 오행이 서로 살리나 — 두 학설(운해본·훈민정음 해례본)로 따로 본다
+ *   ⑥ 부르는 맛   같은 소리 되풀이·받침이 넘어가며 소리가 바뀌는 곳
+ *   ⑦ 뜻          한자 뜻이 맑은가
+ *   ⑧ 인명용 한자  대법원 인명용 한자 표에 그 음으로 올라 있나(출생신고가 되나)
+ *   ⑨ 흔한 정도   2025년 출생신고 상위 스무 이름 안에 드나
+ *   ⑩ 놀림·피하는 글자  놀림말로 들리나, 옛 작명서가 피하라던 글자인가
+ */
+import fs from 'node:fs'
+import crypto from 'node:crypto'
+import * as SJ from './saju-core.js'
+import { POOL, NAMES, TOP2025, SURNAMES, AVOID, TEASE } from '../_data/pool.js'
+
+/* ───────── 글자 표 ───────── */
+const RAW = JSON.parse(fs.readFileSync(new URL('../_data/hanja.json', import.meta.url), 'utf8'))
+const BY = new Map()
+for (const [h, eum, hun, won, el, rad] of RAW) BY.set(h, { h, eum, hun, won, el, rad })
+export const HANJA_COUNT = RAW.length
+
+const POOLMAP = {}            // 소리 → [{h, k(뜻말)}]
+const POOLKEY = new Map()     // 글자 → 뜻말
+for (const [eum, s] of Object.entries(POOL)) {
+  POOLMAP[eum] = s.split(/ (?=\S:)/).map(t => { const i = t.indexOf(':'); return { h: t.slice(0, i), k: t.slice(i + 1) } })
+  for (const x of POOLMAP[eum]) POOLKEY.set(x.h, x.k)
+}
+const EUM = new Map()         // 소리 → 글자들(이름에 자주 쓰는 글자 먼저)
+for (const r of BY.values()) for (const e of r.eum) { if (!EUM.has(e)) EUM.set(e, []); EUM.get(e).push(r) }
+for (const [e, list] of EUM) list.sort((a, b) => (POOLKEY.has(b.h) - POOLKEY.has(a.h)) || (a.h.codePointAt(0) > 0xFFFF) - (b.h.codePointAt(0) > 0xFFFF) || a.won - b.won)
+
+/** 한 소리에 쓸 수 있는 인명용 한자(감정·성씨 고르기 화면용) */
+export function hanjaFor(eum, limit = 120) {
+  return (EUM.get(eum) || []).slice(0, limit).map(r => ({ h: r.h, hun: r.hun.join(', '), won: r.won, el: r.el, pool: POOLKEY.has(r.h) }))
+}
+
+/* ───────── 다섯 기운 ───────── */
+const EL = ['木', '火', '土', '金', '水']
+const ELKO = { 木: '나무', 火: '불', 土: '흙', 金: '쇠', 水: '물' }
+const ELI = Object.fromEntries(EL.map((e, i) => [e, i]))
+const gen = e => EL[(ELI[e] + 1) % 5]      // e 가 살리는 것
+const ctl = e => EL[(ELI[e] + 2) % 5]      // e 가 누르는 것
+const genBy = e => EL[(ELI[e] + 4) % 5]    // e 를 살리는 것
+const ctlBy = e => EL[(ELI[e] + 3) % 5]    // e 를 누르는 것
+function rel(a, b) {
+  if (a === b) return 'same'
+  if (gen(a) === b) return 'gen'      // a 가 b 를 살림
+  if (gen(b) === a) return 'genr'     // b 가 a 를 살림
+  return 'ctl'                        // 서로 누름(어느 쪽이든)
+}
+const RELKO = { same: '같은 기운', gen: '살려 줌', genr: '살려 줌', ctl: '부딪침' }
+const SK_EL = ['木', '木', '火', '火', '土', '土', '金', '金', '水', '水']
+const BR_EL = ['水', '土', '木', '木', '土', '火', '火', '土', '金', '金', '土', '水']
+
+/* ───────── 한글 ───────── */
+const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'
+const JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+const isHangul = c => { const k = c.charCodeAt(0); return k >= 0xAC00 && k <= 0xD7A3 }
+const parts = c => { const k = c.charCodeAt(0) - 0xAC00; return { cho: CHO[Math.floor(k / 588)], jung: Math.floor((k % 588) / 28), jong: JONG[k % 28] } }
+const BAT = { 0: 1, 1: 1, 3: 1, 6: 1, 7: 1, 8: 1 } // 영 일 삼 육 칠 팔 — 받침 있는 숫자 끝
+function batchim(word) {
+  const s = String(word).replace(/\([^()]*\)$/, '').replace(/[\s)）」』"'.,·]+$/, ''); const c = s.slice(-1)
+  if (!c) return false
+  if (isHangul(c)) return parts(c).jong !== ''
+  if (/[0-9]/.test(c)) return !!BAT[c]
+  return false
+}
+const rieul = word => { const c = String(word).slice(-1); return isHangul(c) && parts(c).jong === 'ㄹ' }
+export const J = {
+  을: w => w + (batchim(w) ? '을' : '를'), 이: w => w + (batchim(w) ? '이' : '가'), 은: w => w + (batchim(w) ? '은' : '는'),
+  과: w => w + (batchim(w) ? '과' : '와'), 으로: w => w + (batchim(w) && !rieul(w) ? '으로' : '로'), 이다: w => w + (batchim(w) ? '입니다' : '입니다'),
+}
+
+/* 소리 오행 — 두 학설 */
+const SOUND = {
+  운해: { ㄱ: '木', ㅋ: '木', ㄴ: '火', ㄷ: '火', ㄹ: '火', ㅌ: '火', ㅇ: '土', ㅎ: '土', ㅅ: '金', ㅈ: '金', ㅊ: '金', ㅁ: '水', ㅂ: '水', ㅍ: '水' },
+  해례: { ㄱ: '木', ㅋ: '木', ㄴ: '火', ㄷ: '火', ㄹ: '火', ㅌ: '火', ㅁ: '土', ㅂ: '土', ㅍ: '土', ㅅ: '金', ㅈ: '金', ㅊ: '金', ㅇ: '水', ㅎ: '水' },
+}
+const plainCho = c => ({ ㄲ: 'ㄱ', ㄸ: 'ㄷ', ㅃ: 'ㅂ', ㅆ: 'ㅅ', ㅉ: 'ㅈ' }[c] || c)
+const soundEl = (syl, school) => SOUND[school][plainCho(parts(syl).cho)]
+
+/* ───────── 81수 ───────── */
+const SU = `1 太初 1 모든 일의 첫머리라 바탕이 굳고 크게 이룹니다
+2 分離 0 힘이 갈라지고 흩어져 한데 모이지 않습니다
+3 名譽 1 슬기와 재주로 이름을 얻습니다
+4 不定 0 기틀이 흔들려 고생이 잦습니다
+5 福壽 1 복과 수를 함께 누리고 집안이 넉넉합니다
+6 繼成 1 받은 덕을 이어 차곡차곡 쌓아 갑니다
+7 獨立 1 굳센 뜻으로 홀로 서서 일을 이룹니다
+8 發達 1 꾸준한 힘으로 끝내 뜻을 펼칩니다
+9 窮迫 0 애써도 거두는 것이 적고 막힘이 많습니다
+10 空虛 0 속이 비어 쌓은 것이 쉽게 흩어집니다
+11 興家 1 집안을 일으키고 차츰 번창합니다
+12 薄弱 0 뜻은 크나 힘이 모자라 꺾이기 쉽습니다
+13 智謀 1 꾀와 지혜가 밝아 어려움을 풀어 갑니다
+14 離散 0 가까운 사이가 흩어지고 외로움이 따릅니다
+15 統率 1 사람을 거느리고 위아래가 잘 따릅니다
+16 德望 1 덕망으로 사람을 모으고 귀하게 됩니다
+17 健暢 1 굳세게 밀고 나가 뜻을 이룹니다
+18 隆昌 1 뜻을 세워 크게 일어섭니다
+19 苦難 0 재주는 있으나 고비가 잦습니다
+20 虛妄 0 이룬 일이 허무하게 무너지기 쉽습니다
+21 頭領 1 남의 위에 서서 이끄는 우두머리 수입니다
+22 中折 0 일이 중간에 꺾이기 쉽습니다
+23 功名 1 공을 세워 이름을 크게 떨칩니다
+24 立身 1 맨손으로 일어서 재물을 모읍니다
+25 安康 1 재주와 슬기로 편안하게 이룹니다
+26 英雄 0 큰 뜻을 품으나 풍파가 커 굴곡이 많습니다
+27 中斷 0 잘 나가다 중간에 막히기 쉽습니다
+28 波瀾 0 풍파가 잦아 편할 날이 적습니다
+29 成功 1 지혜와 재물을 함께 얻어 뜻을 이룹니다
+30 浮夢 0 뜬구름처럼 들고 남이 커 기복이 심합니다
+31 隆昌 1 지혜와 덕으로 집안을 크게 일으킵니다
+32 順風 1 뜻밖의 도움을 받아 순풍처럼 나아갑니다
+33 昇天 1 기세가 하늘에 오를 만큼 크게 떨칩니다
+34 破滅 0 뜻밖의 화로 이룬 것을 잃기 쉽습니다
+35 泰平 1 온화하고 평탄하게 이뤄 갑니다
+36 義俠 0 의리는 깊으나 풍파가 따릅니다
+37 出世 1 성실함으로 이름을 얻고 높이 오릅니다
+38 福祿 1 재주와 글솜씨로 복록을 누립니다
+39 安樂 1 부귀와 영화를 누리는 수입니다
+40 無常 0 들고 남이 잦아 오래 지키기 어렵습니다
+41 大功 1 덕과 슬기로 큰 공을 세웁니다
+42 苦行 0 재주는 많으나 끝을 맺기 어렵습니다
+43 迷惑 0 겉은 화려하나 속이 비기 쉽습니다
+44 魔障 0 마가 끼어 일이 자주 어그러집니다
+45 顯達 1 뜻이 크고 깊어 크게 이름을 냅니다
+46 困窮 0 애쓴 만큼 거두기 어렵습니다
+47 展開 1 하는 일마다 펼쳐지고 열매를 맺습니다
+48 榮達 1 덕과 지혜로 남을 이끌고 영달합니다
+49 變化 0 길흉이 엇갈려 변화가 많습니다
+50 相半 0 한 번 이루면 한 번 잃는 수입니다
+51 盛衰 0 성하고 쇠함이 번갈아 옵니다
+52 昇龍 1 앞을 내다보는 눈으로 크게 일어섭니다
+53 憂愁 0 겉보기와 달리 속근심이 많습니다
+54 無功 0 애써도 공이 돌아오지 않습니다
+55 未達 0 다 된 일이 마지막에 어그러지기 쉽습니다
+56 不足 0 뜻을 펴기에 힘이 모자랍니다
+57 時來 1 어려움 뒤에 때를 만나 크게 이룹니다
+58 後榮 1 처음은 고되나 뒤에 영화가 옵니다
+59 不成 0 뜻을 세워도 이루기 어렵습니다
+60 暗黑 0 앞이 어두워 길을 잃기 쉽습니다
+61 財利 1 재물과 이름을 함께 얻습니다
+62 衰退 0 기운이 차츰 줄어듭니다
+63 吉祥 1 만사가 뜻대로 풀리는 수입니다
+64 沈滯 0 일이 막히고 고이기 쉽습니다
+65 輝揚 1 집안이 두루 번창합니다
+66 亡身 0 안팎으로 어려움이 겹칩니다
+67 天福 1 하늘의 복으로 뜻을 이룹니다
+68 明智 1 슬기롭고 부지런해 집안을 일으킵니다
+69 停止 0 일이 멈추고 나아가지 못합니다
+70 滅亡 0 공허함이 커 쌓기 어렵습니다
+71 晩達 1 힘써 나아가면 차츰 펼쳐집니다
+72 後困 0 처음은 좋으나 뒤가 고됩니다
+73 平吉 1 크게 오르지는 않아도 평탄합니다
+74 不遇 0 때를 못 만나 재주를 못 씁니다
+75 適時 1 때를 맞추면 무난히 이룹니다
+76 後成 0 처음이 고되고 늦게야 풀립니다
+77 前後 0 앞이 좋으면 뒤가 고되고 뒤가 좋으면 앞이 고됩니다
+78 平福 0 중년까지는 좋으나 말년이 쓸쓸합니다
+79 不信 0 믿음을 얻기 어렵습니다
+80 隱遁 0 물러나 숨는 수입니다
+81 還元 1 처음으로 돌아가 다시 크게 일어납니다`.split('\n').map(l => { const [n, nm, g, ...t] = l.split(' '); return { n: +n, nm: nm + '格', gil: g === '1', t: t.join(' ') } })
+const su = n => { let k = n; while (k > 81) k -= 80; return SU[k - 1] }
+const SUKO = { 元: '원격', 亨: '형격', 利: '이격', 貞: '정격' }
+const SUAGE = { 元: '초년 — 태어나 스무 살 무렵까지', 亨: '청년 — 스물부터 마흔 무렵', 利: '중년 — 마흔부터 예순 무렵', 貞: '말년 — 평생을 묶는 총운' }
+
+/** 네 격. 성 획수(복성은 합), 이름 글자 획수 배열 */
+export function sagyeok(sw, gw) {
+  const g = gw.reduce((a, b) => a + b, 0)
+  let o
+  if (gw.length === 1) o = { 元: gw[0], 亨: sw + gw[0], 利: sw, 貞: sw + gw[0] }
+  else o = { 元: g, 亨: sw + gw[0], 利: sw + gw[gw.length - 1], 貞: sw + g }
+  return ['元', '亨', '利', '貞'].map(k => ({ k, ko: SUKO[k], age: SUAGE[k], n: o[k], ...su(o[k]) }))
+}
+
+/* ───────── 사주 ───────── */
+const STEM_TXT = ['큰 나무처럼 곧게 뻗는', '풀과 덩굴처럼 휘어도 꺾이지 않는', '한낮의 해처럼 환하게 드러나는', '등불처럼 가까이를 따뜻하게 비추는', '큰 산처럼 무겁고 믿음직한',
+  '기름진 밭처럼 품이 넓은', '무쇠처럼 굳고 결단이 빠른', '다듬은 보석처럼 섬세하고 깔끔한', '큰 강처럼 넓게 흐르는', '이슬비처럼 조용히 스며드는']
+
+function pillarsOf(b, noon = false) {
+  const n = SJ.normalizeBirthData({
+    gender: b.sex === '여' ? 'female' : 'male', calendarType: b.cal === '양력' ? 'solar' : 'lunar', isLeapMonth: b.cal === '윤달',
+    year: b.y, month: b.m, day: b.d, ...(noon ? { hour: 12, minute: 0 } : b.h == null ? { birthTimeUnknown: true } : { hour: b.h, minute: b.mi || 0 }), timezone: 'Asia/Seoul',
+  })
+  if (!n.ok) return null
+  const P = SJ.calculateFourPillars(n.data)
+  const one = x => x && x.kind === 'pillar' ? x : null
+  const cols = ['hour', 'day', 'month', 'year'].map(k => one(P[k]))
+  /* 절기가 바뀌는 날에 태어난 시를 모르면 달(해) 기둥이 둘로 갈려 엔진이 비워 둔다 — 한낮으로 세고 그렇다고 적는다 */
+  if ((!cols[2] || !cols[3]) && b.h == null && !noon) { const r = pillarsOf(b, true); if (r) { r.cols[0] = null; r.termDay = true } return r }
+  if (!cols[1] || !cols[2] || !cols[3]) return null
+  return { cols, solar: P.calendarContext?.solarDate || null, lunar: P.calendarContext?.lunarDate || null }
+}
+
+/** 사주를 다섯 기운으로 세고, 이름이 채울 기운을 정한다 */
+export function sajuOf(b) {
+  const p = pillarsOf(b); if (!p) return null
+  const [hr, dy, mo, yr] = p.cols
+  const cnt = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 }, raw = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 }
+  const add = (e, w) => { cnt[e] += w; raw[e] += 1 }
+  for (const c of [yr, mo, dy, hr]) if (c) { add(SK_EL[c.stem.index], 1); add(BR_EL[c.branch.index], c === mo ? 2 : 1) }
+  const dm = SK_EL[dy.stem.index]
+  const total = Object.values(cnt).reduce((a, b) => a + b, 0)
+  const help = cnt[dm] + cnt[genBy(dm)]
+  const ratio = help / total
+  const strong = ratio > 0.55 ? '강' : ratio < 0.45 ? '약' : '중'
+  let yong, why
+  if (strong === '약') {
+    const a = genBy(dm), b2 = dm
+    yong = cnt[a] <= cnt[b2] ? a : b2
+    why = `타고난 바탕(${ELKO[dm]})이 둘레 기운에 비해 여립니다. 바탕을 받쳐 줄 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.`
+  } else if (strong === '강') {
+    const out = gen(dm), money = ctl(dm), rule = ctlBy(dm)
+    if (cnt[genBy(dm)] > cnt[dm]) { yong = money; why = `바탕을 감싸는 기운이 지나치게 두텁습니다. 그 두터움을 덜어 쓰는 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
+    else { yong = [out, money, rule].sort((x, y) => cnt[x] - cnt[y])[0]; why = `바탕(${ELKO[dm]})이 넘칠 만큼 굳셉니다. 그 힘을 밖으로 풀어 줄 ${ELKO[yong]} 기운이 이름에 들어가야 합니다.` }
+  } else {
+    yong = EL.slice().sort((x, y) => cnt[x] - cnt[y] || ELI[x] - ELI[y])[0]
+    why = `바탕과 둘레 기운이 고르게 맞섭니다. 가장 엷은 ${ELKO[yong]} 기운을 이름으로 채워 고르기를 맞춥니다.`
+  }
+  const hee = genBy(yong), gi = ctlBy(yong)
+  // 조후 — 겨울 달은 불, 여름 달은 물
+  const mb = mo.branch.index
+  let johu = null
+  if ([11, 0, 1].includes(mb) && cnt['火'] < 1.5) johu = '火'
+  if ([5, 6, 7].includes(mb) && cnt['水'] < 1.5) johu = '水'
+  const lack = EL.filter(e => raw[e] === 0)
+  const over = EL.filter(e => cnt[e] >= total * 0.38)
+  return {
+    cols: p.cols.map(c => c ? { s: c.stem.hanja, b: c.branch.hanja, sk: c.stem.korean, bk: c.branch.korean, se: SK_EL[c.stem.index], be: BR_EL[c.branch.index] } : null),
+    solar: p.solar, lunar: p.lunar, hourKnown: !!hr, termDay: !!p.termDay,
+    cnt, raw, dm, dmTxt: STEM_TXT[dy.stem.index], dmHj: dy.stem.hanja, strong, ratio: Math.round(ratio * 100),
+    yong, hee, gi, johu, lack, over, why,
+  }
+}
+export function sajuText(s) {
+  const L = []
+  L.push(`태어난 날의 하늘 글자는 ${s.dmHj}(${ELKO[s.dm]}) — ${s.dmTxt} 바탕입니다.`)
+  const order = EL.slice().sort((a, b) => s.cnt[b] - s.cnt[a])
+  L.push(`여덟 글자${s.hourKnown ? '' : '(태어난 시를 몰라 여섯 글자)'}를 다섯 기운으로 세면 ${order.map(e => `${ELKO[e]} ${s.raw[e]}`).join(' · ')}입니다.${s.lack.length ? ` ${s.lack.map(e => ELKO[e]).join('·')} 기운은 한 글자도 없습니다.` : ''}`)
+  if (s.termDay) L.push('태어난 날이 절기가 바뀌는 날이라, 태어난 시를 모르면 달 기둥이 둘 중 하나로 갈립니다. 한낮에 태어난 것으로 셌습니다 — 시를 알면 넣어 주십시오.')
+  L.push(s.why)
+  if (s.johu && s.johu !== s.yong) L.push(`${s.johu === '火' ? '찬 계절에 태어나 몸을 데울 불' : '더운 계절에 태어나 열을 식힐 물'} 기운도 함께 챙기면 좋습니다.`)
+  L.push(`그래서 이름 글자는 ${J.을(ELKO[s.yong] + '(' + s.yong + ')')} 가장 먼저, ${J.을(ELKO[s.hee] + '(' + s.hee + ')')} 그다음으로 담고, ${ELKO[s.gi]}(${s.gi}) 기운은 피해서 고릅니다.`)
+  return L
+}
+
+/* ───────── 입력 ───────── */
+const clip = (v, n) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n)
+const int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null }
+export function cleanInput(x) {
+  if (!x || typeof x !== 'object') return null
+  const kind = ['baby', 'rename', 'gamjeong', 'manse'].includes(x.kind) ? x.kind : null
+  if (!kind) return null
+  const sex = x.sex === '여' ? '여' : x.sex === '남' ? '남' : null
+  const cal = ['양력', '음력', '윤달'].includes(x.cal) ? x.cal : '양력'
+  const y = int(x.y, 1920, 2030), m = int(x.m, 1, 12), d = int(x.d, 1, 31)
+  const h = x.h === null || x.h === '' || x.h === undefined ? null : int(x.h, 0, 23)
+  const mi = h == null ? 0 : (int(x.mi, 0, 59) ?? 0)
+  if (!sex || !y || !m || !d) return null
+  const o = { kind, sex, cal, y, m, d, h, mi }
+  if (kind === 'manse') return o
+  const sur = clip(x.sur, 2)
+  if (!SURNAMES[sur]) return null
+  const opts = Array.isArray(SURNAMES[sur]) ? SURNAMES[sur] : [...SURNAMES[sur]]
+  o.sur = sur; o.surHj = opts.includes(x.surHj) ? x.surHj : opts[0]
+  if (kind === 'gamjeong' || (kind === 'rename' && x.given)) {
+    const given = clip(x.given, 4), gh = [...clip(x.givenHj, 4)]
+    if (kind === 'gamjeong' && (!given || ![...given].every(isHangul) || given.length < 1 || given.length > 3)) return null
+    if (given) {
+      if (![...given].every(isHangul) || gh.length !== given.length) return null
+      o.given = given; o.givenHj = gh.join('')
+    }
+  }
+  if (kind === 'baby' || kind === 'rename') {
+    const dk = clip(x.dolKo, 1), dh = clip(x.dolHj, 1), dp = int(x.dolPos, 1, 2)
+    if (dk && dh && dp && isHangul(dk) && BY.get(dh)?.eum.includes(dk)) { o.dolKo = dk; o.dolHj = dh; o.dolPos = dp }
+    const W = Object.keys(WISH)
+    o.wish = (Array.isArray(x.wish) ? x.wish : []).filter(w => W.includes(w)).slice(0, 2)
+  }
+  return o
+}
+export const fingerprint = o => crypto.createHash('sha256').update(JSON.stringify(o)).digest('base64url').slice(0, 24)
+const birthOf = o => ({ sex: o.sex, cal: o.cal, y: o.y, m: o.m, d: o.d, h: o.h, mi: o.mi })
+
+/* 바라는 뜻 — 고르면 그 뜻을 담은 글자를 앞에 세운다(점수 열 잣대와는 따로) */
+export const WISH = {
+  밝음: '昭炫晟熙暻景晶燦赫煥朗晤旿昀晛彬斌炅璟鎬皓明星',
+  지혜: '智睿叡慧悟敏知賢哲',
+  굳셈: '健建桓峻埈泰太浩勝駿',
+  넉넉함: '裕優多寶珍銀珉珠潤富',
+  바름: '正貞義道仁善誠眞律準範宜',
+  평안: '安晏穩溫柔靜宥',
+  큰뜻: '成志承昇宇宙奎元源翰英',
+  고움: '佳嘉姸娟娜雅媛瑜璘璐蓮婉娥',
+}
+
+/* ───────── 잣대 ───────── */
+const W = { 사주: 15, 뿌리: 8, 수리: 15, 음양: 8, 소리: 12, 부름: 8, 뜻: 12, 인명: 10, 흔함: 4, 놀림: 8 }
+const BADHUN = /죽|병들|슬플|근심|망할|어두울|울(?!타리)|거짓|독할|악할|흉할|해칠|도둑|미칠|어리석|천할|괴로울|가난|외로울|버릴|잃을|쇠할|원망|시기할|무덤|상복|재앙|귀신|벌레|똥|오줌|종(?=$)|요사|간사|음란|사나울|게으를|더러울|부끄러울|싸울|칠(?=$)|베일|찌를|아플|짐승|쥐|뱀|모자랄|헛될|그칠|막힐|떨어질|흩어질/
+const FEM = new Set([...'娟婉姬娥姸娜媛嬉妍姝婷嫣嬌媚'])
+const MAS = new Set([...'雄勇武剛彪虎猛豪將'])
+const teaseList = TEASE.split(/\s+/).filter(Boolean)
+const AVOIDSET = new Set([...AVOID])
+const rank = (ko, sex) => { const i = TOP2025[sex].findIndex(([n]) => n === ko); return i < 0 ? null : { rank: i + 1, count: TOP2025[sex][i][1], total: TOP2025.전체[sex] } }
+
+function sealsOf(c) {
+  const s = []
+  if (c.checks.every(x => x.score >= 7)) s.push('通')
+  const snd = c.checks.find(x => x.key === '소리'); if (snd?.both) s.push('二說通')
+  const sj = c.checks.find(x => x.key === '사주'); if (sj?.score >= 8) s.push('補')
+  return s
+}
+const gradeOf = t => t >= 90 ? ['上上', '상상'] : t >= 80 ? ['上', '상'] : t >= 70 ? ['中上', '중상'] : t >= 60 ? ['中', '중'] : ['下', '하']
+
+/**
+ * 이름 하나를 열 잣대로 잰다.
+ * n = { sur, surHj, given(한글), givenHj(한자), sex }, s = sajuOf(...)
+ */
+export function evaluate(n, s) {
+  const surChars = [...n.surHj].map(h => BY.get(h) || { h, won: 0, el: '土', hun: [] })
+  const sw = surChars.reduce((a, r) => a + r.won, 0)
+  const gks = [...n.given], ghs = [...n.givenHj]
+  const gs = ghs.map((h, i) => BY.get(h) || { h, won: 0, el: null, hun: [], eum: [], missing: true })
+  const checks = []
+  const roleOf = e => e === s.yong ? '용신' : e === s.hee ? '희신' : e === s.gi ? '기신' : (s.johu && e === s.johu) ? '조후' : '한신'
+  const ROLE_TXT = { 용신: '이 사주에 가장 필요한 기운을 바로 채웁니다', 희신: '가장 필요한 기운을 뒤에서 북돋웁니다', 조후: '태어난 계절의 차고 더움을 맞춰 줍니다', 한신: '해도 득도 크지 않은 기운입니다', 기신: '이 사주가 꺼리는 기운이라 오히려 짐이 됩니다' }
+
+  // ① 사주 보완
+  {
+    const pts = { 용신: 5, 희신: 3.5, 조후: 3, 한신: 1.5, 기신: 0 }
+    const roles = gs.map(g => g.el ? roleOf(g.el) : '한신')
+    let sc = roles.reduce((a, r) => a + pts[r], 0) / gs.length * 2
+    if (gs.length > 1 && roles.includes('용신') && (roles.includes('희신') || roles.filter(r => r === '용신').length > 1)) sc = Math.max(sc, 9.5)
+    sc = Math.min(10, Math.round(sc * 10) / 10)
+    const lines = gs.map((g, i) => `${g.h}(${gks[i]}) — 자원오행 ${g.el ? ELKO[g.el] + '(' + g.el + ')' : '알 수 없음'}: ${g.el ? `${roleOf(g.el)}입니다. ${ROLE_TXT[roleOf(g.el)]}.` : ''}`)
+    const verdict = sc >= 9 ? `사주에 모자란 ${ELKO[s.yong]} 기운을 이름이 정확히 채웁니다.` : sc >= 7 ? `사주를 돕는 기운이 들어 있습니다.` : sc >= 5 ? `사주에 크게 해롭지는 않으나 꼭 필요한 기운은 비어 있습니다.` : `이 사주가 꺼리는 기운이 이름에 들어 있습니다.`
+    checks.push({ key: '사주', no: 1, title: '사주 보완', icon: 'plum', score: sc, verdict, lines })
+  }
+  // ② 글자 뿌리(자원오행 흐름)
+  {
+    const seq = [surChars[surChars.length - 1], ...gs].map(g => g.el)
+    const pairs = []; for (let i = 0; i + 1 < seq.length; i++) pairs.push(seq[i] && seq[i + 1] ? rel(seq[i], seq[i + 1]) : 'same')
+    const bad = pairs.filter(p => p === 'ctl').length, good = pairs.filter(p => p === 'gen' || p === 'genr').length
+    const sc = bad === 0 ? (good === pairs.length ? 10 : good > 0 ? 8.5 : 7) : bad === 1 ? 4.5 : 1.5
+    const names = [n.surHj.slice(-1), ...ghs]
+    const lines = pairs.map((p, i) => `${names[i]}(${ELKO[seq[i]] || '?'}) → ${names[i + 1]}(${ELKO[seq[i + 1]] || '?'}): ${RELKO[p]}`)
+    checks.push({ key: '뿌리', no: 2, title: '글자 뿌리', icon: 'roots', score: sc, flow: pairs, seq, verdict: bad ? `글자 뿌리끼리 부딪치는 곳이 ${bad}군데 있습니다.` : good ? '성에서 이름 끝 자까지 글자 뿌리가 막힘 없이 이어집니다.' : '글자 뿌리끼리 부딪치지는 않습니다.', lines })
+  }
+  // ③ 수리 사격
+  const sg = sagyeok(sw, gs.map(g => g.won))
+  {
+    const gil = sg.filter(x => x.gil).length
+    const sc = [1, 2.5, 4.5, 7, 10][gil]
+    checks.push({ key: '수리', no: 3, title: '수리 사격', icon: 'rods', score: sc, sagyeok: sg, verdict: gil === 4 ? '원·형·이·정 네 격이 모두 길한 수입니다.' : `네 격 가운데 ${4 - gil}격이 흉한 수입니다.`, lines: sg.map(x => `${x.ko}(${x.k}格) ${x.n}수 ${x.nm} — ${x.gil ? '길' : '흉'}. ${x.t} [${x.age}]`) })
+  }
+  // ④ 음양
+  {
+    const all = [...surChars.map(r => r.won), ...gs.map(g => g.won)]
+    const odd = all.filter(w => w % 2).length, even = all.length - odd
+    const sc = odd && even ? 10 : 2
+    checks.push({ key: '음양', no: 4, title: '음양', icon: 'sunmoon', score: sc, verdict: odd && even ? '홀수(양)와 짝수(음) 획이 섞여 음양이 어울립니다.' : `획수가 모두 ${odd ? '홀수(양)' : '짝수(음)'}라 한쪽으로 몰렸습니다.`, lines: [...surChars.map(r => r.h), ...ghs].map((h, i) => `${h} ${all[i]}획 — ${all[i] % 2 ? '양(홀)' : '음(짝)'}`) })
+  }
+  // ⑤ 소리 오행 — 두 학설
+  {
+    const syl = [...n.sur.slice(-1), ...gks]
+    const per = {}
+    for (const sc of ['운해', '해례']) {
+      const seq = syl.map(c => soundEl(c, sc)); const pairs = []
+      for (let i = 0; i + 1 < seq.length; i++) pairs.push(rel(seq[i], seq[i + 1]))
+      const bad = pairs.filter(p => p === 'ctl').length, good = pairs.filter(p => p !== 'same' && p !== 'ctl').length
+      per[sc] = { seq, pairs, bad, score: bad === 0 ? (good ? 10 : 8) : bad === 1 ? 4 : 1 }
+    }
+    const both = per.운해.bad === 0 && per.해례.bad === 0
+    const sc = Math.round((per.운해.score * 0.6 + per.해례.score * 0.4) * 10) / 10
+    const show = k => syl.map((c, i) => `${c}(${ELKO[per[k].seq[i]]})`).join(' → ')
+    checks.push({
+      key: '소리', no: 5, title: '소리 오행', icon: 'bell', score: sc, both, per,
+      verdict: both ? '두 학설 어느 쪽으로 들어도 소리가 서로 부딪치지 않습니다.' : per.운해.bad === 0 ? '요즘 작명가 다수가 쓰는 학설로는 부딪침이 없으나, 훈민정음 해례본 학설로는 한 곳이 부딪칩니다.' : per.해례.bad === 0 ? '훈민정음 해례본 학설로는 부딪침이 없으나, 요즘 다수 학설로는 부딪치는 곳이 있습니다.' : '두 학설 모두에서 소리가 부딪치는 곳이 있습니다.',
+      lines: [`요즘 다수 학설(ㅇ·ㅎ을 흙으로): ${show('운해')}`, `훈민정음 해례본(ㅇ·ㅎ을 물로): ${show('해례')}`],
+    })
+  }
+  // ⑥ 부르는 맛
+  {
+    const full = n.sur + n.given, issues = []
+    const syl = [...full]
+    for (let i = 0; i + 1 < syl.length; i++) if (syl[i] === syl[i + 1]) issues.push(`'${syl[i]}' 소리가 잇달아 나옵니다`)
+    if (gks.includes(n.sur.slice(-1))) issues.push('성과 같은 소리가 이름에 들어 있습니다')
+    const chos = syl.map(c => plainCho(parts(c).cho)); if (chos.length >= 3 && new Set(chos).size === 1) issues.push(`첫소리가 모두 '${chos[0]}'이라 혀가 꼬이기 쉽습니다`)
+    // 받침이 다음 'ㅇ'으로 넘어가며 나는 소리 — 그 소리로도 놀림말을 찾는다
+    const heard = syl.map((c, i) => {
+      let p0 = parts(c); const nx = syl[i + 1] && parts(syl[i + 1]); const pv = syl[i - 1] && parts(syl[i - 1])
+      let cho = p0.cho, jong = p0.jong
+      if (nx && jong && nx.cho === 'ㅇ' && CHO.includes(jong) && jong !== 'ㅇ') jong = ''
+      if (pv && pv.jong && p0.cho === 'ㅇ' && CHO.includes(pv.jong) && pv.jong !== 'ㅇ') cho = pv.jong
+      return String.fromCharCode(0xAC00 + CHO.indexOf(cho) * 588 + p0.jung * 28 + JONG.indexOf(jong))
+    }).join('')
+    const linkHit = heard !== full ? teaseList.filter(w => heard.includes(w) && !full.includes(w)) : []
+    if (linkHit.length) issues.push(`[${heard}]로 소리 나 '${linkHit[0]}'처럼 들립니다`)
+    const linkNote = heard !== full && !linkHit.length ? `${full}은 실제로 [${heard}]로 소리 납니다 — 다른 말로 들리지는 않습니다.` : null
+    const sc = Math.max(3, 10 - issues.length * 2)
+    checks.push({ key: '부름', no: 6, title: '부르는 맛', icon: 'wave', score: sc, verdict: issues.length ? `불러 볼 때 걸리는 곳이 ${issues.length}군데 있습니다.` : '소리가 매끄럽게 이어져 부르기 편합니다.', lines: issues.length ? [...issues, ...(linkNote ? [linkNote] : [])] : [linkNote || `${full} — 같은 소리가 겹치지 않고 소리 그대로 또렷하게 들립니다.`] })
+  }
+  // ⑦ 뜻
+  {
+    const pc = gs.map(g => g.missing ? 0 : POOLKEY.has(g.h) ? 10 : BADHUN.test(g.hun.join(' ')) ? 2 : 7)
+    let sc = pc.reduce((a, b) => a + b, 0) / pc.length
+    const notes = []
+    if (n.sex === '남' && ghs.some(h => FEM.has(h))) { notes.push('여자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
+    if (n.sex === '여' && ghs.some(h => MAS.has(h))) { notes.push('남자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
+    sc = Math.max(0, Math.round(sc * 10) / 10)
+    const ks = gs.map(g => POOLKEY.get(g.h) || (g.hun[0] || '').replace(/(을|ㄹ)$/, ''))
+    const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 ? `‘${ks[0]}’를 한 글자에 담은 이름입니다.` : ''
+    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.join(', ') + ' ' + gks[i] : '뜻을 찾지 못했습니다'}${BADHUN.test(g.hun.join(' ')) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
+  }
+  // ⑧ 인명용 한자
+  {
+    const ok = gs.map((g, i) => !g.missing && g.eum.includes(gks[i]))
+    const sc = ok.every(Boolean) ? 10 : 0
+    checks.push({ key: '인명', no: 8, title: '인명용 한자', icon: 'sieve', score: sc, verdict: sc ? '모든 글자가 대법원 인명용 한자 표에 그 음으로 올라 있어 출생신고·개명신고에 쓸 수 있습니다.' : '인명용 한자 표에 없는 글자가 있어 이대로는 신고할 수 없습니다.', lines: gs.map((g, i) => `${g.h} ${gks[i]} — ${ok[i] ? '인명용 한자 표에 있음' : g.missing ? '인명용 한자 표에 없음' : `표에는 '${g.eum.join(', ')}' 음으로만 있음`}`) })
+  }
+  // ⑨ 흔한 정도
+  {
+    const r = rank(n.given, n.sex)
+    const sc = !r ? 10 : r.rank <= 10 ? 7 : 8
+    checks.push({ key: '흔함', no: 9, title: '흔한 정도', icon: 'tags', score: sc, rank: r, verdict: r ? `2025년에 태어난 ${n.sex === '남' ? '남자' : '여자'} 아기 이름 ${r.rank}위입니다.` : '2025년 출생신고 상위 스무 이름 안에 들지 않습니다.', lines: r ? [`한 해 ${r.count.toLocaleString('ko-KR')}명이 이 이름으로 신고됐습니다. 같은 해 ${n.sex === '남' ? '남자' : '여자'} 아기 ${Math.round(r.total / r.count)}명 가운데 1명꼴입니다.`, '같은 반에 같은 이름이 있을 수 있는 정도입니다.'] : ['같은 이름과 자주 겹치지는 않을 소리입니다. (한자까지 같은 이름은 훨씬 드뭅니다)'] })
+  }
+  // ⑩ 놀림·피하는 글자
+  {
+    const full = n.sur + n.given
+    const hit = teaseList.filter(w => full.includes(w) || n.given.includes(w))
+    const av = ghs.filter(h => AVOIDSET.has(h))
+    const sc = hit.length && av.length ? 1 : hit.length ? 2 : av.length ? 6 : 10
+    const lines = []
+    if (hit.length) lines.push(`'${hit[0]}'(으)로 들려 놀림을 받을 수 있습니다.`)
+    if (av.length) lines.push(`${av.join('·')} — 옛 작명서가 이름에 피하라던 글자(불용문자)입니다. 요즘은 꺼리지 않는 작명가도 많습니다.`)
+    if (!lines.length) lines.push('놀림말로 들리는 소리도, 옛 작명서가 피하라던 글자도 없습니다.')
+    checks.push({ key: '놀림', no: 10, title: '놀림·피하는 글자', icon: 'scale', score: sc, verdict: hit.length ? '놀림말로 들릴 수 있는 소리가 있습니다.' : av.length ? '옛 작명서가 피하라던 글자가 하나 있습니다.' : '놀릴 거리도, 피할 글자도 없습니다.', lines })
+  }
+
+  const total = Math.round(checks.reduce((a, c) => a + c.score * W[c.key] / 10, 0))
+  const [g, gk] = gradeOf(total)
+  const out = { sur: n.sur, surHj: n.surHj, given: n.given, givenHj: n.givenHj, full: n.sur + n.given, fullHj: n.surHj + n.givenHj, total, grade: g, gradeKo: gk, checks, sagyeok: sg, chars: gs.map((g2, i) => ({ h: g2.h, ko: gks[i], hun: g2.hun, won: g2.won, el: g2.el, k: POOLKEY.get(g2.h) || '' })), surWon: sw }
+  out.seals = sealsOf(out)
+  return out
+}
+
+/* ───────── 이름 짓기 ───────── */
+const hash = s => crypto.createHash('sha256').update(s).digest().readUInt32BE(0)
+
+/** 성·사주·돌림자·바라는 뜻으로 이름 후보를 모두 재고 순위를 낸다 */
+export function generate(o, s) {
+  const sex = o.sex
+  let names = NAMES[sex].split(/\s+/).filter(Boolean)
+  const seen = new Set()
+  if (o.dolKo) {
+    const p = o.dolPos - 1
+    const others = new Set(names.map(nm => [...nm][1 - p]).filter(x => POOLMAP[x]))
+    names = [...new Set([...names.filter(nm => [...nm][p] === o.dolKo), ...[...others].map(x => p === 0 ? o.dolKo + x : x + o.dolKo)])]
+  }
+  const listed = new Set(names)
+  if (!o.dolKo && names.length) {
+    const other = new Set(NAMES[sex === '남' ? '여' : '남'].split(/\s+/))
+    const f = new Set(names.map(x => [...x][0])), b = new Set(names.map(x => [...x][1]))
+    for (const a of f) for (const c of b) { const nm = a + c; if (a !== c && !listed.has(nm) && !other.has(nm) && !teaseList.some(w => nm.includes(w))) names.push(nm) }
+  }
+  const wish = new Set((o.wish || []).flatMap(w => [...WISH[w]]))
+  const funnel = { 전체: HANJA_COUNT, 이름글자: 0, 수리: 0, 음양: 0, 소리: 0, 사주: 0, 남은이름: 0 }
+  const best = []
+  const surWon = [...o.surHj].reduce((a, h) => a + (BY.get(h)?.won || 0), 0)
+  const lastSur = [...o.surHj].slice(-1)[0]
+  const surEl = BY.get(lastSur)?.el
+  for (const nm of names) {
+    if (seen.has(nm)) continue; seen.add(nm)
+    const [s1, s2] = [...nm]
+    if (s1 === s2) continue
+    const A = o.dolKo && o.dolPos === 1 ? [{ h: o.dolHj }] : POOLMAP[s1] || []
+    const B = o.dolKo && o.dolPos === 2 ? [{ h: o.dolHj }] : POOLMAP[s2] || []
+    if (!A.length || !B.length) continue
+    // 소리는 한자와 상관없다 — 이름마다 한 번만 본다. 두 학설 모두에서 부딪칠 때만 뺀다
+    // (한 학설로만 걸리면 점수에서 덜고 까닭을 적는다 — 학설이 둘로 갈려 있어 한쪽만으로 버리면 지나치다)
+    const badIn = sc => { const e = [o.sur.slice(-1), s1, s2].map(c => soundEl(c, sc)); return rel(e[0], e[1]) === 'ctl' || rel(e[1], e[2]) === 'ctl' }
+    const sndBad = badIn('운해') && badIn('해례')
+    let top = null
+    for (const a of A) for (const b of B) {
+      if (a.h === b.h) continue
+      const ra = BY.get(a.h), rb = BY.get(b.h); if (!ra || !rb) continue
+      funnel.이름글자++
+      const sg = sagyeok(surWon, [ra.won, rb.won]); if (!sg.every(x => x.gil)) continue
+      funnel.수리++
+      const ws = [surWon, ra.won, rb.won]; if (ws.every(w => w % 2) || ws.every(w => !(w % 2))) continue
+      funnel.음양++
+      if (sndBad) continue
+      funnel.소리++
+      if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(e => e === s.yong || e === s.hee || e === s.johu)) continue
+      if (surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
+      funnel.사주++
+      const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex }, s)
+      if (ev.checks.find(c => c.key === '놀림').score < 6 || ev.checks[0].score < 6.5) continue
+      const bonus = [a.h, b.h].filter(h => wish.has(h)).length * 3
+      const key = ev.total + bonus - (listed.has(nm) ? 0 : 15) + (hash(o.sur + nm + a.h + b.h + o.y + o.m + o.d) % 100) / 1000
+      if (!top || key > top.key) top = { key, ev, wishHit: bonus > 0, listed: listed.has(nm) }
+    }
+    if (top) best.push(top)
+  }
+  best.sort((a, b) => b.key - a.key)
+  // 첫 자가 한 소리로 쏠리지 않게 — 같은 첫 자는 열 개 안에 셋까지만
+  const pick = [], rest = [], first = {}
+  for (const x of best) { const f = x.ev.given[0]; if ((first[f] || 0) < 3 && pick.length < 10) { pick.push(x); first[f] = (first[f] || 0) + 1 } else rest.push(x) }
+  const list = [...pick, ...rest].slice(0, 20).map((x, i) => ({ ...x.ev, rank: i + 1, wishHit: x.wishHit, listed: x.listed }))
+  funnel.남은이름 = best.length
+  return { list, funnel }
+}
+
+/** 감정한 이름과 소리가 같은 더 좋은 한자 셋 */
+function betterHanja(o, s, cur) {
+  const gk = [...o.given]
+  const opts = gk.map(c => (POOLMAP[c] || []).map(x => x.h))
+  if (opts.some(x => !x.length) || gk.length !== 2) return []
+  const out = []
+  for (const a of opts[0]) for (const b of opts[1]) {
+    if (a + b === o.givenHj || a === b) continue
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: a + b, sex: o.sex }, s)
+    if (ev.total > cur.total) out.push(ev)
+  }
+  return out.sort((x, y) => y.total - x.total).slice(0, 3)
+}
+
+/* ───────── 보여 줄 것 ───────── */
+const FREE_KEYS = ['인명', '음양', '흔함']
+const sealCheck = c => ({ key: c.key, no: c.no, title: c.title, icon: c.icon, sealed: true })
+function sajuView(s) { return { ...s, lines: sajuText(s), elko: ELKO } }
+
+/** 무료로 보여 주는 것 — 결제 전 서버가 내보내는 전부 */
+export function freeView(o) {
+  const s = sajuOf(birthOf(o)); if (!s) { const e = new Error('BAD_BIRTH'); e.code = 'BAD_BIRTH'; throw e }
+  if (o.kind === 'manse') return { kind: 'manse', saju: sajuView(s) }
+  if (o.kind === 'gamjeong') {
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s)
+    return { kind: o.kind, saju: { cols: s.cols, hourKnown: s.hourKnown, cnt: s.cnt, raw: s.raw, dmHj: s.dmHj, dm: s.dm, elko: ELKO }, name: { full: ev.full, fullHj: ev.fullHj, chars: ev.chars },
+      checks: ev.checks.map(c => FREE_KEYS.includes(c.key) ? c : sealCheck(c)), sealedCount: ev.checks.filter(c => !FREE_KEYS.includes(c.key)).length }
+  }
+  const g = generate(o, s)
+  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s) : null
+  return {
+    kind: o.kind, saju: sajuView(s), funnel: g.funnel, count: g.list.length,
+    sealed: g.list.slice(0, 10).map(x => ({ total: x.total, grade: x.grade, seals: x.seals })),
+    current: cur ? { full: cur.full, fullHj: cur.fullHj, grade: cur.grade, gradeKo: cur.gradeKo } : null,
+  }
+}
+/** 결제하면 보여 주는 것 */
+export function fullView(o) {
+  const s = sajuOf(birthOf(o)); if (!s) { const e = new Error('BAD_BIRTH'); e.code = 'BAD_BIRTH'; throw e }
+  if (o.kind === 'gamjeong') {
+    const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s)
+    return { kind: o.kind, saju: sajuView(s), name: ev, better: betterHanja(o, s, ev) }
+  }
+  const g = generate(o, s)
+  const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex }, s) : null
+  return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list, current: cur }
+}
+export const PRODUCTS = ['baby', 'rename', 'gamjeong']
