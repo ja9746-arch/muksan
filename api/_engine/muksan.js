@@ -353,6 +353,15 @@ const W = { 사주: 15, 뿌리: 8, 수리: 15, 음양: 8, 소리: 12, 부름: 8,
    긴 말은 들어 있으면, 한 글자 말은 그 낱말이 통째로 같을 때만 건다 */
 const BADSUB = /죽을|병들|슬플|슬퍼할|근심|망할|어두울|거짓|독할|악할|흉할|해칠|도둑|미칠|어리석|천할|괴로울|가난|외로울|버릴|잃을|쇠할|원망|시기할|무덤|상복|재앙|귀신|벌레|요사|간사|음란|사나울|게으를|더러울|부끄러울|싸울|찌를|아플|짐승|모자랄|헛될|막힐|떨어질|흩어질|울부짖|곡할|죄|형벌|오줌|똥/
 const BADWORD = new Set(['울', '쥐', '칠', '피', '병', '뱀', '종', '때릴', '벨', '베일', '그칠', '망'])
+/* 훈(…할·…을)을 이름에서 담는 말(…함·…음)로 — '강인할'→'강인함', '맑을'→'맑음', '고울'→'고움'. '옥돌'처럼 이름씨는 그대로 */
+const nounOf = w => {
+  w = String(w || '').trim(); if (!w) return ''
+  const last = w.slice(-1), c = last.charCodeAt(0) - 0xAC00
+  if (c < 0 || c > 11171) return w
+  if (last === '을' && w.length > 1) return w.slice(0, -1) + '음'
+  if (c % 28 === 8 && w.length > 1) return w.slice(0, -1) + String.fromCharCode(0xAC00 + c - 8 + 16)
+  return w
+}
 const badHun = hun => (hun || []).some(w => BADSUB.test(w) || BADWORD.has(w.trim()))
 const FEM = new Set([...'娟婉姬娥姸娜媛嬉妍姝婷嫣嬌媚'])
 const MAS = new Set([...'雄勇武剛彪虎猛豪將'])
@@ -467,7 +476,7 @@ export function evaluate(n, s) {
     if (n.sex === '남' && ghs.some(h => FEM.has(h))) { notes.push('여자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
     if (n.sex === '여' && ghs.some(h => MAS.has(h))) { notes.push('남자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
     sc = Math.max(0, Math.round(sc * 10) / 10)
-    const ks = gs.map(g => POOLKEY.get(g.h) || (g.hun[0] || '').replace(/(을|ㄹ)$/, ''))
+    const ks = gs.map(g => POOLKEY.get(g.h) || nounOf(g.hun[0]))
     const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 && ks[0] ? `‘${ks[0]}’${batchim(ks[0]) ? '을' : '를'} 한 글자에 담은 이름입니다.` : ''
     // 바람 말 — 글자마다 '이런 사람이 되라'는 꾸밈말을 이어 이름 한 줄 풀이를 만든다(이름에 쓰는 글자만. 나머지는 뜻말로 대신)
     // 이름에 드문 글자가 섞이면 억지로 잇지 않는다 — 훈을 그대로 꿰면 '수레뒤턱나무의 뜻을 품은'처럼 어색해진다
@@ -505,7 +514,7 @@ export function evaluate(n, s) {
 
   const total = Math.round(checks.reduce((a, c) => a + c.score * W[c.key] / 10, 0))
   const [g, gk] = gradeOf(total)
-  const out = { sur: n.sur, surHj: n.surHj, given: n.given, givenHj: n.givenHj, full: n.sur + n.given, fullHj: n.surHj + n.givenHj, total, grade: g, gradeKo: gk, checks, sagyeok: sg, chars: gs.map((g2, i) => ({ h: g2.h, ko: gks[i], hun: g2.hun, won: g2.won, el: g2.el, k: POOLKEY.get(g2.h) || '' })), surWon: sw }
+  const out = { sur: n.sur, surHj: n.surHj, given: n.given, givenHj: n.givenHj, full: n.sur + n.given, fullHj: n.surHj + n.givenHj, total, grade: g, gradeKo: gk, checks, sagyeok: sg, chars: gs.map((g2, i) => ({ h: g2.h, ko: gks[i], hun: g2.hun, won: g2.won, el: g2.el, k: POOLKEY.get(g2.h) || nounOf(g2.hun[0]) })), surWon: sw }
   out.seals = sealsOf(out)
   return out
 }

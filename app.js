@@ -260,7 +260,7 @@ function elsHTML(sj, mark = true) {
  return `<div class="els">${Object.keys(EL).map(e => `<div class="${mark && (e === sj.yong) ? 'need' : ''} ${sj.raw[e] ? '' : 'zero'}"><img src="img/el-${EL[e]}.webp" alt="${ELKO[e]}(${e})"><b>${sj.raw[e]}</b><span>${mark && e === sj.yong ? '채울 기운' : mark && e === sj.hee ? '돕는 기운' : ELKO[e]}</span></div>`).join('')}</div>`
 }
 function sajuCard(sj, title = '타고난 사주') {
- return `<div class="card"><h2><img src="img/icon-plum.webp" alt="">${title}</h2>${pillarsHTML(sj)}${elsHTML(sj)}${(sj.lines || []).map(l => `<p>${esc(l)}</p>`).join('')}</div>`
+ return `<div class="card"><h2><img src="img/icon-plum.webp" alt="">${title}</h2>${pillarsHTML(sj)}${elsHTML(sj)}<div class="rd">${(sj.lines || []).map(l => `<p>${hl(l)}</p>`).join('')}</div></div>`
 }
 function whenText(o, sj) {
  const t = o.h == null ? '태어난 시 모름' : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
@@ -277,7 +277,7 @@ function renderManse() {
   <span class="lab" style="left:${VX[i]}%;width:${(VX[i + 1] - VX[i]).toFixed(2)}%">${COLS[i]}주</span>
   <div class="cell ${i === 1 ? 'dm' : ''}" style="${cell(i, 0)}"><b>${c ? esc(c.s) : '?'}</b><i>${c ? esc(c.sk) + ' ' + ELKO[c.se] : '모름'}</i></div>
   <div class="cell" style="${cell(i, 1)}"><b>${c ? esc(c.b) : '?'}</b><i>${c ? esc(c.bk) + ' ' + ELKO[c.be] : '모름'}</i></div>`).join('')
- $('#manseCard').innerHTML = `<h2><img src="img/icon-plum.webp" alt="">다섯 기운</h2>${elsHTML(sj)}${sj.lines.map(l => `<p>${esc(l)}</p>`).join('')}<p class="yong"><b>이름이 채울 기운</b> — ${이가(ELKO[sj.yong] + '(' + sj.yong + ')')} 첫째, ${이가(ELKO[sj.hee] + '(' + sj.hee + ')')} 둘째입니다. 이 기운의 한자로 이름을 지으면 사주의 빈자리를 메웁니다.</p><p class="note">날짜는 절기로 달을 가르고, 태어난 시는 서울 기준 30분을 보정해 셉니다(백귀사주 만세력과 같은 셈).</p>`
+ $('#manseCard').innerHTML = `<h2><img src="img/icon-plum.webp" alt="">다섯 기운</h2>${elsHTML(sj)}<div class="rd">${sj.lines.map(l => `<p>${hl(l)}</p>`).join('')}</div><p class="yong"><b>이름이 채울 기운</b> — ${hl(`${이가(ELKO[sj.yong] + '(' + sj.yong + ')')} 첫째, ${이가(ELKO[sj.hee] + '(' + sj.hee + ')')} 둘째입니다. 이 기운의 한자로 이름을 지으면 사주의 빈자리를 메웁니다.`)}</p><p class="note">날짜는 절기로 달을 가르고, 태어난 시는 서울 기준 30분을 보정해 셉니다(백귀사주 만세력과 같은 셈).</p>`
 }
 
 /* ───────── 무료 결과 ───────── */
@@ -323,18 +323,35 @@ function renderFree() {
  payNote()
 }
 
+/* ───────── 읽기 좋게 — 중요한 말에 색과 굵기 ─────────
+   뜻말 ‘…’은 먹색 굵게, 이름 한 줄 풀이 ‘…사람’은 붉게, 다섯 기운은 제 빛깔, 점·획·수는 굵게, '좋지 않습니다'는 붉게 */
+const ELC = { 나무: 'mok', 불: 'hwa', 흙: 'to', 쇠: 'geum', 물: 'su' }, HJC = { 木: 'mok', 火: 'hwa', 土: 'to', 金: 'geum', 水: 'su' }
+function hl(t) {
+ let h = esc(t)
+ h = h.replace(/‘([^’]{1,48})’/g, (m, w) => `<b class="${/사람$/.test(w) ? 'hl-bar' : 'hl-k'}">‘${w}’</b>`)
+ h = h.replace(/(나무|불|흙|쇠|물)\((木|火|土|金|水)\)/g, (m, k, z) => `<b class="el-${HJC[z]}">${k}(${z})</b>`)
+ h = h.replace(/((?:나무|불|흙|쇠|물)(?:·(?:나무|불|흙|쇠|물))*) 기운/g, (m, ks) => ks.split('·').map(k => `<b class="el-${ELC[k]}">${k}</b>`).join('·') + ' 기운')
+ h = h.replace(/(\d+)(점|획|수)(?=[^가-힣]|$|[이은을는의과와로도만에])/g, '<b class="hl-n">$1$2</b>')
+ h = h.replace(/(좋지 않습니다|나쁨)/g, '<b class="hl-bad">$1</b>')
+ // 괄호 뒤 조사가 줄 첫머리로 떨어지지 않게(…민)\n은) — 낱말 잇개(U+2060)
+ h = h.replace(/\)(은|는|이|가|을|를|과|와|의|에|로|으로)(?=[\s,.]|$)/g, ')\u2060$1')
+ return h
+}
+/* 문장마다 한 줄 — 긴 문단을 끊어 읽게 */
+const sents = t => String(t).split(/(?<=[다요]\.)\s+/).filter(Boolean)
+
 /* ───────── 잣대 하나 ───────── */
 const lvl = s => s >= 9.5 ? 5 : s >= 8 ? 4 : s >= 6.5 ? 3 : s >= 4.5 ? 2 : 1
 function ckHTML(c) {
  const L = lvl(c.score)
  return `<div class="ck"><div class="t"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><span class="sc">${Number(c.score).toFixed(c.score % 1 ? 1 : 0)}</span></div>
- <div class="bar"><img src="img/gauge-${L}.webp" alt="" style="width:${L * 20}%"></div><p class="v">${esc(c.verdict)}</p><ul>${c.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`
+ <div class="bar"><img src="img/gauge-${L}.webp" alt="" style="width:${L * 20}%"></div><p class="v">${hl(c.verdict)}</p><ul>${c.lines.map(l => `<li>${hl(l)}</li>`).join('')}</ul></div>`
 }
 
 /* ───────── 바꾼다면 어느 쪽으로 ───────── */
 function guideHTML(g, n, withCta = true) {
- return `<div class="card guide"><h2><img src="img/icon-sieve.webp" alt="">바꾼다면 어느 쪽으로</h2><p class="v2">${esc(g.verdict)}</p>
-  ${g.lines.map(l => `<p>${esc(l)}</p>`).join('')}
+ return `<div class="card guide"><h2><img src="img/icon-sieve.webp" alt="">바꾼다면 어느 쪽으로</h2><p class="v2">${hl(g.verdict)}</p>
+  <div class="rd">${g.lines.map(l => `<p>${hl(l)}</p>`).join('')}</div>
   ${g.need.map(nd => `<p class="pk-h">${esc(nd.ko)} 기운 글자 보기</p><div class="exs">${nd.ex.map(x => `<span><b>${esc(x.h)}</b>${esc(x.eum)} · ${esc(x.k)}</span>`).join('')}</div>`).join('')}
   ${withCta && g.samples && g.samples.length ? `<p class="pk-h">같은 생년월일로 지은 개명 이름 맨 위 셋</p><div class="samples">${g.samples.map(x => `<div><b>${esc(x.full)}</b><span>${x.total}점 · ${esc(x.grade)}</span><em>한자 封</em></div>`).join('')}</div>
   <p class="note">한자와 열 잣대 풀이, 나머지 열일곱 이름은 ‘개명할 이름 짓기’에서 펼칩니다. 넣으신 성·생년월일·지금 이름을 그대로 옮겨 드립니다.</p>
@@ -425,16 +442,19 @@ function flowHTML(names, seq, pairs) {
 }
 function paljaHTML(pj, sj) {
  const row = (lab, cnt) => `<div class="pjrow"><span class="pjl">${lab}</span>${Object.keys(EL).map(e => `<div class="${sj && e === sj.yong ? 'need' : ''} ${cnt[e] ? '' : 'zero'}"><img src="img/el-${EL[e]}.webp" alt="${ELKO[e]}"><b>${cnt[e]}</b></div>`).join('')}</div>`
- return `<div class="card"><h2><img src="img/icon-roots.webp" alt="">이름이 더해진 팔자</h2><p class="note" style="margin-top:-4px">사주 여덟 글자의 다섯 기운에 이름 글자의 뿌리 기운을 더해 봤습니다.</p>${row('사주만', pj.before)}${row('이름 더하면', pj.after)}${pj.lines.map(l => `<p>${esc(l)}</p>`).join('')}</div>`
+ return `<div class="card"><h2><img src="img/icon-roots.webp" alt="">이름이 더해진 팔자</h2><p class="note" style="margin-top:-4px">사주 여덟 글자의 다섯 기운에 이름 글자의 뿌리 기운을 더해 봤습니다.</p>${row('사주만', pj.before)}${row('이름 더하면', pj.after)}<div class="rd">${pj.lines.map(l => `<p>${hl(l)}</p>`).join('')}</div></div>`
 }
+const STORY_H = ['이름의 뜻', '타고난 바탕', '이름이 채우는 기운', '네 시기의 운', '부르는 소리', '눈여겨볼 곳', '총평']
 function storyHTML(x) {
- return x.story ? `<div class="card story"><h2><img src="img/icon-book.webp" alt="">한눈 풀이</h2>${x.story.map((l, i) => `<p${i === x.story.length - 1 ? ' class="last"' : ''}>${esc(l)}</p>`).join('')}</div>` : ''
+ if (!x.story) return ''
+ const last = x.story.length - 1
+ return `<div class="card story"><h2><img src="img/icon-book.webp" alt="">한눈 풀이</h2>${x.story.map((t, i) => `<section class="st${i === last ? ' tot' : ''}"><h3>${STORY_H[i] || ''}</h3>${sents(t).map(z => `<p>${hl(z)}</p>`).join('')}</section>`).join('')}</div>`
 }
 function detailCards(x, sj) {
  const ck = Object.fromEntries(x.checks.map(c => [c.key, c]))
  const WX = [0.8, 25.8, 50.2, 74.6]
  let h = ''
- if (ck.뜻 && ck.뜻.join) h += `<p class="join">${esc(ck.뜻.join)}${ck.뜻.baram ? `<span class="baram">${esc(ck.뜻.baram)}이 되라는 이름</span>` : ''}</p>`
+ if (ck.뜻 && ck.뜻.join) h += `<p class="join">${hl(ck.뜻.join)}${ck.뜻.baram ? `<span class="baram">${esc(ck.뜻.baram)}이 되라는 이름</span>` : ''}</p>`
  h += storyHTML(x)
  if (x.palja) h += paljaHTML(x.palja, sj)
  h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
@@ -453,14 +473,17 @@ function detailCards(x, sj) {
 let sheetX = null
 function openSheet(x) {
  sheetX = x
- const isTop = x.rank === 1
+ const isTop = x.rank === 1, isCur = S.full && S.full.current === x
+ const gam = (S.full && S.full.kind === 'gamjeong') || isCur
+ $('#sheetName').textContent = `${x.full} ${x.fullHj}`
  $('#sheetBody').innerHTML = `<div class="plate"><img src="img/plate-gold.webp" alt=""><span class="pseal" aria-hidden="true"></span><div class="tx"><b>${esc(x.fullHj)}</b><span>${esc(x.full)}</span></div></div>
   <div class="score"><b>${x.total}</b><span>점 · ${esc(x.grade)}(${esc(x.gradeKo)})${x.rank ? ` · ${x.rank}위` : ''}</span></div>${sealsFig(x, isTop)}
   ${detailCards(x, S.full.saju)}
-  <button class="cta" type="button" id="sheetCert">${S.full && S.full.kind === 'gamjeong' ? '감명장 받기' : '성명장 받기'}</button>`
+  <div class="sheet-end"><button class="cta" type="button" id="sheetCert">${gam ? '감명장 받기' : '성명장 받기'}</button><button class="lbtn" type="button" id="sheetDone">${isCur ? '새 이름 목록으로 돌아가기' : '목록으로 돌아가기'}</button></div>`
  $('#sheet').classList.add('on'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'
  history.pushState({ s: cur, sheet: 1 }, '')
- $('#sheetCert').addEventListener('click', () => { const k = S.full.kind === 'gamjeong' ? 'gam' : 'seong'; closeSheet(); openCert(x, k) })
+ $('#sheetCert').addEventListener('click', () => { closeSheet(); openCert(x, gam ? 'gam' : 'seong') })
+ $('#sheetDone').addEventListener('click', () => closeSheet())
 }
 function closeSheet(fromPop) {
  if (!$('#sheet').classList.contains('on')) return
@@ -468,6 +491,7 @@ function closeSheet(fromPop) {
  if (!fromPop && history.state && history.state.sheet) history.back()
 }
 $('#sheetX').addEventListener('click', () => closeSheet())
+$('#sheetBack').addEventListener('click', () => closeSheet())
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet() })
 
 /* ───────── 견주기 ───────── */

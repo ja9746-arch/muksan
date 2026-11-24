@@ -362,9 +362,14 @@ a{color:inherit}
 .sheet{position:fixed;inset:0;z-index:60;background:rgba(30,25,21,.6);display:none;overflow:auto;-webkit-overflow-scrolling:touch}
 .sheet.on{display:block}
 .sheet .in2{display:flow-root;max-width:460px;margin:0 auto;min-height:100%;background:var(--paper) url(img/hanji.webp) center top/320px;padding-bottom:40px;position:relative}
-.sheet .x{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:max(10px,calc(50% - 220px));width:40px;height:40px;z-index:62}
-.sheet .x img{width:40px}
-.plate{position:relative;margin:calc(56px + env(safe-area-inset-top,0px)) 14px 0}
+.shd{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:rgba(244,236,221,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid rgba(163,132,63,.5);box-shadow:0 8px 16px -14px rgba(50,35,20,.55)}
+.shd .sb{flex:none;width:40px;height:40px}
+.shd b{min-width:0;font-size:16.5px;font-weight:700;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-end{margin:22px 14px 0}
+.sheet-end .cta{margin-top:0}
+.sheet-end .lbtn{margin-top:12px}
+.shd .sb img{width:40px;height:40px}
+.plate{position:relative;margin:18px 14px 0}
 .plate img{width:100%}
 .plate .tx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.15}
 .plate .pseal{position:absolute;left:4.1%;top:15.4%;width:4.6%;height:16.8%;background:#a93222 url(img/seal-muk.webp) center/118% 118% no-repeat}
@@ -396,8 +401,19 @@ a{color:inherit}
 .flow .ar span{display:block;font-size:11px;color:var(--mute)}
 .flow-h{font-size:13.5px;color:var(--mute);text-align:center;margin-top:12px}
 
-.story p{font-size:16px;line-height:1.85;margin-top:8px}
-.story p.last{font-weight:700;color:var(--red)}
+.story .st{padding:14px 0 4px;border-top:1px dashed rgba(60,45,30,.22)}
+.story h2+.st{border-top:0;padding-top:2px}
+.story h3{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--red);letter-spacing:.08em}
+.story h3::before{content:"";width:5px;height:5px;background:var(--red);transform:rotate(45deg)}
+.story .st p{font-size:16px;line-height:1.8;margin-top:5px;color:var(--ink)}
+.story .st.tot{margin-top:14px;padding:12px 14px;border:0;border-left:3px solid var(--red);background:rgba(169,50,34,.06)}
+.story .st.tot p{font-weight:700}
+.rd p{margin-top:8px;line-height:1.8}
+.hl-k{font-weight:700;color:var(--ink)}
+.hl-bar{font-weight:700;color:var(--red)}
+.hl-n{font-weight:700;color:var(--ink)}
+.hl-bad{font-weight:700;color:var(--red)}
+.el-mok{font-weight:700;color:var(--mok)}.el-hwa{font-weight:700;color:var(--hwa)}.el-to{font-weight:700;color:var(--to)}.el-geum{font-weight:700;color:#6a6f76}.el-su{font-weight:700;color:var(--su)}
 .pjrow{display:grid;grid-template-columns:82px repeat(5,minmax(0,1fr));align-items:center;gap:4px;margin-top:8px;text-align:center}
 .pjrow .pjl{font-size:13px;color:var(--ink2);text-align:left}
 .pjrow img{width:38px;height:38px;margin:0 auto;object-fit:contain}
@@ -642,7 +658,7 @@ a{color:inherit}
 </div>
 
 <!-- 이름 하나 자세히 -->
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="이름 풀이 자세히"><div class="in2"><button class="x" type="button" id="sheetX" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button><div id="sheetBody"></div></div></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="이름 풀이 자세히"><div class="in2"><div class="shd"><button class="sb" type="button" id="sheetBack" aria-label="목록으로"><img src="img/ic-back.webp" alt=""></button><b id="sheetName"></b><button class="sb" type="button" id="sheetX" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button></div><div id="sheetBody"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- 약관·개인정보처리방침·환불정책·사업자정보 -->
