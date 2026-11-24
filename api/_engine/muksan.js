@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 import * as SJ from './saju-core.js'
+import { BARAM } from '../_data/baram.js'
 import { POOL, NAMES, TOP2025, SURNAMES, AVOID, TEASE } from '../_data/pool.js'
 
 /* ───────── 글자 표 ───────── */
@@ -434,8 +435,11 @@ export function evaluate(n, s) {
     if (n.sex === '여' && ghs.some(h => MAS.has(h))) { notes.push('남자 이름에 많이 쓰는 글자가 들어 있습니다'); sc -= 1 }
     sc = Math.max(0, Math.round(sc * 10) / 10)
     const ks = gs.map(g => POOLKEY.get(g.h) || (g.hun[0] || '').replace(/(을|ㄹ)$/, ''))
-    const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 ? `‘${ks[0]}’를 한 글자에 담은 이름입니다.` : ''
-    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.map(w => w + ' ' + gks[i]).join(', ') : '뜻을 찾지 못했습니다'}${POOLKEY.has(g.h) ? ` · 이름에서는 ‘${POOLKEY.get(g.h)}’${batchim(POOLKEY.get(g.h)) ? '을' : '를'} 담습니다` : ''}${!POOLKEY.has(g.h) && badHun(g.hun) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
+    const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 && ks[0] ? `‘${ks[0]}’${batchim(ks[0]) ? '을' : '를'} 한 글자에 담은 이름입니다.` : ''
+    // 바람 말 — 글자마다 '이런 사람이 되라'는 꾸밈말을 이어 이름 한 줄 풀이를 만든다(이름에 쓰는 글자만. 나머지는 뜻말로 대신)
+    // 이름에 드문 글자가 섞이면 억지로 잇지 않는다 — 훈을 그대로 꿰면 '수레뒤턱나무의 뜻을 품은'처럼 어색해진다
+    const baram = gs.every(g => BARAM[g.h]) ? gs.map(g => BARAM[g.h]).join(', ') + ' 사람' : ''
+    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, baram, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.map(w => w + ' ' + gks[i]).join(', ') : '뜻을 찾지 못했습니다'}${POOLKEY.has(g.h) ? ` · 이름에서는 ‘${POOLKEY.get(g.h)}’${batchim(POOLKEY.get(g.h)) ? '을' : '를'} 담습니다` : ''}${!POOLKEY.has(g.h) && badHun(g.hun) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...(baram ? [`이어 읽으면 ‘${baram}’이 되라는 이름입니다.`] : []), ...notes] })
   }
   // ⑧ 인명용 한자
   {
@@ -490,7 +494,7 @@ const ELLACK = {
 }
 const ELOVER = {
   木: '나무 기운이 넘쳐 고집과 앞서가려는 마음이 세기 쉽습니다.',
-  火: '불 기운이 넘쳐 마음이 급하고 쉽게 달아오르기 쉽습니다.',
+  火: '불 기운이 넘쳐 마음이 급하고 금세 달아오르기 쉽습니다.',
   土: '흙 기운이 넘쳐 무겁고 느리며 한번 막히면 오래 묵히기 쉽습니다.',
   金: '쇠 기운이 넘쳐 날카롭고 남에게 엄격하기 쉽습니다.',
   水: '물 기운이 넘쳐 생각이 많고 마음이 흔들리기 쉽습니다.',
@@ -528,8 +532,11 @@ export function story(ev, s) {
   const nun = c => `${c.h}(${full1(c)})${batchim(c.ko) ? '은' : '는'}`
   const eun = c => `${c.h}${batchim(c.ko) ? '은' : '는'}`
   const body = ch.map(c => `${eun(c)} ${c.won}획에 ${ELKO[c.el]} 기운`).join(', ')
-  if (ch.length === 2) P.push(`${ev.full}(${ev.fullHj}) — ${nun(ch[0])} ${meanOne(ch[0])}, ${nun(ch[1])} ${meanOne(ch[1])}${batchim((ch[1].k || ch[1].hun[0] || '')) ? '을' : '를'} 뜻합니다. ${ck.뜻.join || ''} 글자의 몸으로 보면 ${body}을 품었습니다.`)
-  else P.push(`${ev.full}(${ev.fullHj}) — ${ch.map(c => `${nun(c)} ${meanOne(c)}`).join(', ')}${batchim((ch[ch.length - 1].k || ch[ch.length - 1].hun[0] || '')) ? '을' : '를'} 뜻합니다. 글자의 몸으로 보면 ${body}을 품었습니다.`)
+  const bline = ck.뜻.baram ? ` ${ch.length > 1 ? '이어 읽으면' : '한 글자로'} ‘${ck.뜻.baram}’이 되라는 이름입니다.` : ''
+  // '…더한 이름입니다. 이어 읽으면 …이름입니다'로 같은 끝이 겹치지 않게, 바람 말이 있으면 '…를 더해,'로 잇는다
+  const j2 = ch.length === 2 && ck.뜻.baram ? `‘${ch[0].k}’에 ‘${ch[1].k}’${batchim(ch[1].k) ? '을' : '를'} 더해,${bline.replace(/^ /, ' ')}` : `${ck.뜻.join || ''}${bline}`
+  if (ch.length === 2) P.push(`${ev.full}(${ev.fullHj}) — ${nun(ch[0])} ${meanOne(ch[0])}, ${nun(ch[1])} ${meanOne(ch[1])}${batchim((ch[1].k || ch[1].hun[0] || '')) ? '을' : '를'} 뜻합니다. ${j2} 글자의 몸으로 보면 ${body}을 품었습니다.`)
+  else P.push(`${ev.full}(${ev.fullHj}) — ${ch.map(c => `${nun(c)} ${meanOne(c)}`).join(', ')}${batchim((ch[ch.length - 1].k || ch[ch.length - 1].hun[0] || '')) ? '을' : '를'} 뜻합니다.${bline} 글자의 몸으로 보면 ${body}을 품었습니다.`)
   const yongIn = ch.filter(c => c.el === s.yong).length, heeIn = ch.filter(c => c.el === s.hee).length, giIn = ch.filter(c => c.el === s.gi).length
   P.push(`태어난 날로 본 바탕은 ‘${s.dmTxt} ${ELKO[s.dm]}’이고, ${STRONG_TXT[s.strong]}. ${s.lack.length ? s.lack.map(e => ELLACK[e]).join(' ') : s.over.length ? s.over.map(e => ELOVER[e]).join(' ') : '다섯 기운이 모두 들어 있어 크게 기운 곳은 없습니다.'}`)
   if (yongIn) P.push(`이름 ${yongIn === ch.length ? '글자 모두' : '한 글자'}가 이 사주에 가장 필요한 ${ELKO[s.yong]} 기운입니다. ${ELBEN[s.yong]} 이름을 부를 때마다 그 힘이 보태진다고 봅니다.`)

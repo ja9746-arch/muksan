@@ -157,8 +157,7 @@ function openForm(kind) {
  $('#givenLab').textContent = kind === 'rename' ? '지금 이름 (넣으시면 함께 감정합니다)' : '감정할 이름'
  $('#sexLab').textContent = kind === 'baby' ? '아기 성별' : '성별'
  $('#y').placeholder = kind === 'baby' ? '2026' : '1990'
- $('#goImg').src = kind === 'manse' ? 'img/bd-manse.webp' : 'img/bd-next.webp'
- $('#goImg').alt = kind === 'manse' ? '만세력 펼치기' : '다음'
+ $('#goTxt').textContent = kind === 'manse' ? '만세력 펼치기' : '다음'
  $$('.err').forEach(e => e.textContent = '')
  show('form')
 }
@@ -290,10 +289,10 @@ function priceCard(kind) {
   rename: ['새 이름 스무 개와 이름마다 쉬운 말 한눈 풀이·열 잣대 풀이', '지금 이름 감정과 바꿀 방향(넣으신 경우)', '이름이 더해진 팔자 — 새 이름이 사주를 어떻게 채우나', '개명 허가 신청과 신고 순서 안내', '고른 이름의 성명장과 풀이첩 — 사진 저장·인쇄'],
   gamjeong: ['봉한 일곱 잣대 풀이와 총점·등급, 쉬운 말 한눈 풀이', '이름이 더해진 팔자 — 사주에 이름을 더하면 다섯 기운이 어떻게 바뀌나', '바꾼다면 어느 쪽으로 — 담을 기운·첫소리·획수와 개명 견본 이름 셋', '같은 소리로 점수가 더 높은 한자', '감명장과 풀이첩 — 사진 저장·인쇄'],
  }[kind]
- const btn = kind === 'gamjeong' ? ['bd-gam', '감정 받기'] : ['bd-pay', '결제하고 이름 받기']
+ const btn = kind === 'gamjeong' ? '감정 받기' : '결제하고 이름 받기'
  return `<div class="price"><h2>${KIND[kind]}</h2><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul>
   <div class="won">${won(PRICE[kind])}<small>원</small></div><span class="paynote" id="paynote" hidden></span>
-  <button class="cta" type="button" id="payBtn"><img src="img/${btn[0]}.webp" alt="${btn[1]} ${won(PRICE[kind])}원"></button>
+  <button class="cta" type="button" id="payBtn" aria-label="${btn} ${won(PRICE[kind])}원">${btn}</button>
   <p class="legal">결제하면 곧바로 풀이가 펼쳐집니다. 디지털 콘텐츠라 펼친 뒤에는 환불이 제한됩니다(전자상거래법 제17조 제2항). 오류로 풀이를 받지 못하면 전액 환불합니다. 결제하면 <a href="#" data-pol="terms">이용약관</a>과 <a href="#" data-pol="refund">환불정책</a>에 동의한 것으로 봅니다.</p></div>`
 }
 const hugiList = `<div class="hugi-slot" data-hugi="list" data-s="묵산" data-title="먼저 받아 본 분들의 말"></div>`
@@ -338,7 +337,7 @@ function guideHTML(g, n, withCta = true) {
   ${g.need.map(nd => `<p class="pk-h">${esc(nd.ko)} 기운 글자 보기</p><div class="exs">${nd.ex.map(x => `<span><b>${esc(x.h)}</b>${esc(x.eum)} · ${esc(x.k)}</span>`).join('')}</div>`).join('')}
   ${withCta && g.samples && g.samples.length ? `<p class="pk-h">같은 생년월일로 지은 개명 이름 맨 위 셋</p><div class="samples">${g.samples.map(x => `<div><b>${esc(x.full)}</b><span>${x.total}점 · ${esc(x.grade)}</span><em>한자 封</em></div>`).join('')}</div>
   <p class="note">한자와 열 잣대 풀이, 나머지 열일곱 이름은 ‘개명할 이름 짓기’에서 펼칩니다. 넣으신 성·생년월일·지금 이름을 그대로 옮겨 드립니다.</p>
-  <button class="cta" type="button" id="toRename"><span class="dbtn">개명할 이름 짓기 · <span data-price="rename">${won(PRICE.rename)}원</span></span></button>` : ''}</div>`
+  <button class="cta" type="button" id="toRename">개명할 이름 짓기 <small data-price="rename">${won(PRICE.rename)}원</small></button>` : ''}</div>`
 }
 
 /* ───────── 결제한 결과 ───────── */
@@ -370,7 +369,7 @@ function renderFull() {
   h += detailCards(n, v.saju)
   if (v.guide) h += guideHTML(v.guide, n)
   if (v.better && v.better.length) h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">같은 소리, 더 나은 한자</h2><p class="note">‘${esc(n.given)}’ 소리는 그대로 두고 한자만 바꾸면 점수가 오르는 짝입니다. 눌러서 자세히 보십시오.</p><div class="names" style="margin:10px 0 0">${v.better.map((x, i) => cardHTML(x, 'b' + i, false)).join('')}</div></div>`
-  h += `<button class="cta" type="button" id="toCert" style="margin-top:22px"><span class="dbtn">감명장 받기</span></button>`
+  h += `<button class="cta" type="button" id="toCert" style="margin-top:22px">감명장 받기</button>`
   h += sajuCard(v.saju) + hugiWrite + miniLinks
  } else {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
@@ -381,8 +380,8 @@ function renderFull() {
   // 1위가 한 줄을 다 쓰면 나머지가 홀수 — 끝 장도 넓게 펴서 외톨이 칸을 없앤다
   const hasFeat = page.some(x => x.rank === 1), oddTail = hasFeat && (page.length - 1) % 2 === 1
   h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j, true, x.rank === 1, oddTail && j === page.length - 1)).join('')}</div>`
-  h += `<div class="btns"><button type="button" id="again"><img src="img/bl-again.webp" alt="${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}"></button><button type="button" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true" style="opacity:.5"' : ''}><img src="img/bl-compare.webp" alt="나란히 견주기"></button></div>`
-  h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} ‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
+  h += `<div class="btns"><button type="button" class="lbtn" id="again">${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}</button><button type="button" class="lbtn" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true"' : ''}>나란히 견주기</button></div>`
+  h += `<p class="mini" style="margin-top:8px">‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
   h += sajuCard(v.saju)
   if (k === 'rename') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">개명은 이렇게 합니다</h2><p>① 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 냅니다. 새 이름의 한글과 한자를 함께 적고, 바꾸려는 까닭을 밝힙니다.</p><p>② 법원이 허가하면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 신고가 끝나면 주민등록·여권·은행·보험 등의 이름을 차례로 바꿉니다.</p><p class="note">2024년 한 해 개명 허가는 8만 4천여 건이었습니다. 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
   h += hugiWrite + miniLinks
@@ -402,7 +401,7 @@ function bindFull() {
   toast(on ? `${x.full} 뺐습니다` : `${x.full} 담았습니다 (${S.picks.length}/3)`, 1600)
   // 다시 그리지 않고 단추만 바꾼다 — 보던 자리가 튀지 않게
   b.setAttribute('aria-pressed', String(!on)); b.textContent = on ? '견주기에 담기' : '견주기에 담음'
-  const cm = $('#cmp'); if (cm) { const ok = S.picks.length >= 2; if (ok) cm.removeAttribute('aria-disabled'); else cm.setAttribute('aria-disabled', 'true'); cm.style.opacity = ok ? '' : '.5' }
+  const cm = $('#cmp'); if (cm) { if (S.picks.length >= 2) cm.removeAttribute('aria-disabled'); else cm.setAttribute('aria-disabled', 'true') }
  }))
  const cur = $('[data-cur]'); cur && cur.addEventListener('click', () => openSheet(v.current))
  const ag = $('#again'); ag && ag.addEventListener('click', () => { S.page = S.page ? 0 : 1; renderFull(); window.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }) })
@@ -435,7 +434,7 @@ function detailCards(x, sj) {
  const ck = Object.fromEntries(x.checks.map(c => [c.key, c]))
  const WX = [0.8, 25.8, 50.2, 74.6]
  let h = ''
- if (ck.뜻 && ck.뜻.join) h += `<p class="join">${esc(ck.뜻.join)}</p>`
+ if (ck.뜻 && ck.뜻.join) h += `<p class="join">${esc(ck.뜻.join)}${ck.뜻.baram ? `<span class="baram">${esc(ck.뜻.baram)}이 되라는 이름</span>` : ''}</p>`
  h += storyHTML(x)
  if (x.palja) h += paljaHTML(x.palja, sj)
  h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
@@ -458,7 +457,7 @@ function openSheet(x) {
  $('#sheetBody').innerHTML = `<div class="plate"><img src="img/plate-gold.webp" alt=""><span class="pseal" aria-hidden="true"></span><div class="tx"><b>${esc(x.fullHj)}</b><span>${esc(x.full)}</span></div></div>
   <div class="score"><b>${x.total}</b><span>점 · ${esc(x.grade)}(${esc(x.gradeKo)})${x.rank ? ` · ${x.rank}위` : ''}</span></div>${sealsFig(x, isTop)}
   ${detailCards(x, S.full.saju)}
-  <button class="cta" type="button" id="sheetCert"><img src="img/bd-cert.webp" alt="성명장 받기"></button>`
+  <button class="cta" type="button" id="sheetCert">${S.full && S.full.kind === 'gamjeong' ? '감명장 받기' : '성명장 받기'}</button>`
  $('#sheet').classList.add('on'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'
  history.pushState({ s: cur, sheet: 1 }, '')
  $('#sheetCert').addEventListener('click', () => { const k = S.full.kind === 'gamjeong' ? 'gam' : 'seong'; closeSheet(); openCert(x, k) })
@@ -517,7 +516,7 @@ async function drawCert(x, kind) {
  const pil = sj.cols.slice().reverse().map((p, i) => p ? p.s + p.b + ['年', '月', '日', '時'][i] : '').filter(Boolean).join(' ')
  const rows = kind === 'gam'
   ? [['태어난 날', when], ['사주', pil], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n}`).join(' ') + ' — ' + (x.sagyeok.every(g => g.gil) ? '네 격 모두 길' : `흉한 격 ${x.sagyeok.filter(g => !g.gil).length}`)]]
-  : [['태어난 날', when], ['사주', pil], ['채운 기운', `${ELKO[sj.yong]}(${sj.yong}) — ` + x.chars.map(k => `${k.h} ${ELKO[k.el]}`).join(' · ')], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n} ${g.nm.replace('格', '')}`).join(' · ')], ['뜻', (x.checks.find(k => k.key === '뜻').join || '').replace(/ 이름입니다\.$/, ' 이름')], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`]]
+  : [['태어난 날', when], ['사주', pil], ['채운 기운', `${ELKO[sj.yong]}(${sj.yong}) — ` + x.chars.map(k => `${k.h} ${ELKO[k.el]}`).join(' · ')], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n} ${g.nm.replace('格', '')}`).join(' · ')], ['뜻', (() => { const k = x.checks.find(k => k.key === '뜻'); return k.baram || (k.join || '').replace(/ 이름입니다\.$/, ' 이름') })()], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`]]
  let y = kind === 'gam' ? 650 : 672, gapL = kind === 'gam' ? 44 : 50, gapR = kind === 'gam' ? 18 : 26; c.textAlign = 'left'
  for (const [k, val] of rows) {
   c.font = `700 32px ${FF}`; c.fillStyle = '#857a6c'; c.fillText(k, 140, y)

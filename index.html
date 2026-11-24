@@ -70,15 +70,18 @@ a{color:inherit}
 .hsub{margin:8px 24px 0;text-align:center;font-size:13.5px;line-height:1.7;color:var(--mute)}
 .lead{padding:22px 24px 6px;font-size:17px;line-height:1.85;text-align:center;color:var(--ink2)}
 .lead b{color:var(--ink)}
-.menu{padding:16px 18px 0;display:grid;gap:16px}
-.mbtn{display:block;text-align:left;transition:transform .15s}
-.mbtn:active{transform:scale(.985)}
-.mbtn img{width:100%;filter:drop-shadow(0 6px 10px rgba(50,35,20,.16))}
-.mbtn .mi{display:flex;align-items:baseline;gap:8px;padding:8px 8px 0;font-size:13.5px;line-height:1.5;color:var(--ink2)}
-.mbtn .mi span{min-width:0}
-.mbtn .mi i{flex:1;min-width:12px;border-bottom:1px dotted rgba(60,45,30,.4);transform:translateY(-4px)}
-.mbtn .mi b{flex:none;font-size:16px;font-weight:700;color:var(--red);white-space:nowrap}
-.mbtn .mi b.free{font-size:13px;padding:1px 8px;background:var(--red);color:#fbf1e2;border-radius:2px;transform:translateY(-1px)}
+.menu{padding:18px 18px 0;display:grid;gap:12px}
+/* 차림표 — 한지 패에 금테 두 줄, 왼쪽 그림·가운데 이름·오른쪽 값. 네 줄의 글자 크기를 하나로 */
+.mcard{position:relative;display:grid;grid-template-columns:56px minmax(0,1fr);align-items:center;gap:12px;width:100%;min-height:88px;padding:12px 16px 12px 12px;text-align:left;background:#f9f4e8 url(img/hanji.webp) center/300px;border:1px solid rgba(163,132,63,.7);box-shadow:0 1px 0 rgba(255,255,255,.65) inset,0 14px 22px -18px rgba(50,35,20,.7);transition:transform .12s,box-shadow .12s}
+.mcard::before{content:"";position:absolute;inset:4px;border:1px solid rgba(163,132,63,.3);pointer-events:none}
+.mcard:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(255,255,255,.65) inset,0 8px 14px -12px rgba(50,35,20,.7)}
+.mcard .mi{width:56px;height:56px;object-fit:contain}
+.mcard .mt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mcard .mh{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.mcard .mh b:first-child{font-size:18.5px;font-weight:700;line-height:1.3;letter-spacing:.01em;color:var(--ink);white-space:nowrap}
+.mcard .mh b+b{flex:none;font-size:16px;font-weight:700;color:var(--red);white-space:nowrap;letter-spacing:-.01em}
+.mcard .mh b.free{align-self:center;font-size:12.5px;padding:1px 9px;background:var(--red);color:#fbf1e2;border-radius:2px;letter-spacing:.06em}
+.mcard .mt small{font-size:12.5px;line-height:1.5;color:var(--mute);word-break:keep-all}
 .sect{margin:26px 18px 0;padding:22px 18px;background:#f9f4e8 url(img/hanji.webp) center/320px;border:1px solid rgba(163,132,63,.6);position:relative;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 14px 26px -22px rgba(50,35,20,.6)}
 .sect::before{content:"";position:absolute;inset:4px;border:1px solid rgba(163,132,63,.35);border-radius:2px;pointer-events:none}
 .sect h2{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:.02em}
@@ -154,12 +157,14 @@ a{color:inherit}
 .pk-h{font-size:14px;color:var(--ink2);margin-top:10px}
 .more{display:block;margin:8px auto 0;font-size:14px;color:var(--ink2);text-decoration:underline}
 .err{color:var(--red);font-size:14px;margin-top:6px;min-height:0}
-.cta{display:block;width:min(100%,340px);margin:20px auto 0}
-.cta img{width:100%}
-.cta[disabled]{opacity:.45}
-.cta2{display:block;width:min(100%,300px);margin:12px auto 0}
-.dbtn{display:block;padding:14px 10px;background:#1e1915;color:#f2e9d8;border:1px solid #a3843f;border-radius:6px;font-size:19px;font-weight:700;letter-spacing:.06em;box-shadow:0 0 0 3px #1e1915,0 0 0 4px rgba(163,132,63,.5)}
-.cta2 img{width:100%}
+/* 단추 — 글자를 그림에 박지 않고 같은 명조로. 먹 단추(주된 일)와 한지 단추(곁 일) 두 가지뿐 */
+.cta,.lbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:min(100%,340px);margin:20px auto 0;padding:10px 18px;font-family:var(--serif);font-weight:700;line-height:1.35;text-align:center;word-break:keep-all;transition:transform .12s,filter .12s}
+.cta{min-height:60px;font-size:19.5px;letter-spacing:.08em;color:#f6eedd;background:linear-gradient(180deg,#2b241e,#15110e);border:1px solid #b08f4a;border-radius:6px;box-shadow:0 0 0 3px #1a1511,0 0 0 4px rgba(176,143,74,.6),0 14px 22px -14px rgba(20,15,10,.75);text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.cta small{font-size:.8em;font-weight:500;letter-spacing:.02em;color:#e3c98f}
+.lbtn{min-height:52px;font-size:16.5px;letter-spacing:.04em;color:var(--ink);background:#fbf7ee url(img/hanji.webp) center/240px;border:1px solid rgba(30,25,21,.6);border-radius:6px;box-shadow:inset 0 0 0 3px rgba(251,247,238,.9),inset 0 0 0 4px rgba(163,132,63,.5),0 10px 18px -14px rgba(50,35,20,.6)}
+.cta:active,.lbtn:active{transform:translateY(1px);filter:brightness(1.06)}
+.cta[disabled],.lbtn[aria-disabled=true]{opacity:.45}
+.cta:focus-visible,.lbtn:focus-visible{outline:2px solid var(--red);outline-offset:4px}
 
 /* 먹 가는 장면 */
 .grind{min-height:var(--vh0,100vh);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;position:relative;overflow:hidden;background:var(--paper) url(img/bg-paper.webp) center/cover}
@@ -347,7 +352,7 @@ a{color:inherit}
 .nc.wide .ko{font-size:20px}
 .nc.wide .sc b{font-size:28px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 14px 0}
-.btns button img{width:100%}
+.btns .lbtn{width:100%;margin:0}
 
 /* 자세히 */
 .sheet{position:fixed;inset:0;z-index:60;background:rgba(30,25,21,.6);display:none;overflow:auto;-webkit-overflow-scrolling:touch}
@@ -368,7 +373,8 @@ a{color:inherit}
 .seals figure{text-align:center;width:72px}
 .seals img{width:46px;height:46px;object-fit:contain;margin:0 auto}
 .seals figcaption{font-size:10.5px;line-height:1.3;color:var(--mute);margin-top:2px}
-.join{text-align:center;margin:12px 18px 0;font-size:16px;line-height:1.7}
+.join{text-align:center;margin:12px 18px 0;font-size:15px;line-height:1.7;color:var(--ink2)}
+.join .baram{display:block;margin-top:4px;font-size:17.5px;font-weight:700;color:var(--ink);line-height:1.55;word-break:keep-all}
 .wh{position:relative;margin:8px 0 0}
 .wh img{width:100%}
 .wh .bx{position:absolute;top:42%;height:55%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
@@ -429,16 +435,17 @@ a{color:inherit}
 .certh small{display:block;font-size:13px;font-weight:500;color:var(--mute)}
 
 /* 알림 */
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;z-index:90;max-width:min(92vw,420px);padding:12px 18px;background:#1e1915;color:#f2e9d8;font-size:14.5px;line-height:1.55;border:1px solid rgba(201,166,90,.5);transition:.25s}
+.toast{pointer-events:none;position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;z-index:90;max-width:min(92vw,420px);padding:12px 18px;background:#1e1915;color:#f2e9d8;font-size:14.5px;line-height:1.55;border:1px solid rgba(201,166,90,.5);transition:.25s}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* 약관 */
 .pol{position:fixed;inset:0;z-index:80;background:rgba(30,25,21,.6);display:none}
 .pol.on{display:block}
-.pol .box{max-width:460px;margin:0 auto;height:100%;background:var(--paper);display:flex;flex-direction:column}
-.polh{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 8px}
-.polt{display:flex;flex-wrap:wrap;gap:2px}
-.polt button{padding:8px 10px;font-size:14px;color:var(--mute)}
+.pol .box{max-width:460px;margin:0 auto;height:100%;background:var(--paper) url(img/hanji.webp) center top/320px;display:flex;flex-direction:column}
+.polh{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(6px + env(safe-area-inset-top,0px)) 8px 0 10px;border-bottom:1px solid rgba(163,132,63,.55);box-shadow:0 1px 0 rgba(255,255,255,.6)}
+.polt{display:flex;flex-wrap:nowrap;gap:0;min-width:0;overflow-x:auto;scrollbar-width:none}
+.polt::-webkit-scrollbar{display:none}
+.polt button{flex:none;padding:12px 10px 11px;font-size:14.5px;color:var(--mute);white-space:nowrap}
 .polt button.on{color:var(--ink);font-weight:700;box-shadow:0 -2px 0 var(--red) inset}
 .polx{width:40px;height:40px}
 .polx img{width:36px}
@@ -486,10 +493,10 @@ a{color:inherit}
 
  <h2 class="hh" id="menuH">무엇을 지어 드릴까요</h2>
  <div class="menu">
-  <button class="mbtn" data-go="baby" type="button"><img src="img/menu-baby.webp" alt="아기 이름 짓기" width="720" height="179"><span class="mi"><span>사주에 맞춘 이름 스무 개 · 성명장</span><i aria-hidden="true"></i><b data-price="baby">19,900원</b></span></button>
-  <button class="mbtn" data-go="rename" type="button"><img src="img/menu-rename.webp" alt="개명할 이름 짓기" width="720" height="179"><span class="mi"><span>새 이름 스무 개 · 지금 이름 감정</span><i aria-hidden="true"></i><b data-price="rename">19,900원</b></span></button>
-  <button class="mbtn" data-go="gamjeong" type="button"><img src="img/menu-gam.webp" alt="지어 둔 이름 감정" width="720" height="179"><span class="mi"><span>열 가지 잣대 · 더 나은 한자 · 감명장</span><i aria-hidden="true"></i><b data-price="gamjeong">4,900원</b></span></button>
-  <button class="mbtn" data-go="manse" type="button"><img src="img/menu-manse.webp" alt="무료 만세력" width="720" height="179"><span class="mi"><span>사주 여덟 글자 · 다섯 기운 · 이름이 채울 기운</span><i aria-hidden="true"></i><b class="free">무료</b></span></button>
+  <button class="mcard" data-go="baby" type="button"><img class="mi" src="img/mi-baby.webp" alt="" aria-hidden="true" width="165" height="132"><span class="mt"><span class="mh"><b>아기 이름 짓기</b><b data-price="baby">19,900원</b></span><small>사주에 맞춘 이름 스무 개 · 성명장</small></span></button>
+  <button class="mcard" data-go="rename" type="button"><img class="mi" src="img/mi-rename.webp" alt="" aria-hidden="true" width="143" height="146"><span class="mt"><span class="mh"><b>개명할 이름 짓기</b><b data-price="rename">19,900원</b></span><small>새 이름 스무 개 · 지금 이름 감정 · 절차</small></span></button>
+  <button class="mcard" data-go="gamjeong" type="button"><img class="mi" src="img/mi-gam.webp" alt="" aria-hidden="true" width="139" height="149"><span class="mt"><span class="mh"><b>지어 둔 이름 감정</b><b data-price="gamjeong">4,900원</b></span><small>열 가지 잣대 · 더 나은 한자 · 감명장</small></span></button>
+  <button class="mcard" data-go="manse" type="button"><img class="mi" src="img/mi-manse.webp" alt="" aria-hidden="true" width="140" height="137"><span class="mt"><span class="mh"><b>무료 만세력</b><b class="free">무료</b></span><small>사주 여덟 글자 · 다섯 기운 · 채울 기운</small></span></button>
  </div>
 
  <div class="hugi-slot" id="hugiHome" data-hugi="roll" data-s="묵산" data-title="먼저 받아 본 분들의 말"></div>
@@ -560,7 +567,7 @@ a{color:inherit}
     <span class="lab">이름에 담고 싶은 뜻 <small style="font-weight:500;color:var(--mute)">(둘까지)</small></span>
     <div class="pills" id="wish"></div>
    </div>
-   <button class="cta" type="submit" id="go"><img id="goImg" src="img/bd-next.webp" alt="다음"></button>
+   <button class="cta" type="submit" id="go"><span id="goTxt">다음</span></button>
    <p class="mini">넣으신 값은 풀이하는 동안만 쓰고 저장하지 않습니다 · <a href="#" data-pol="privacy">개인정보처리방침</a></p>
    <img class="fbrush" src="img/uiroe-brush.webp" alt="" aria-hidden="true" width="400" height="230">
   </div>
@@ -588,8 +595,8 @@ a{color:inherit}
  <div class="book" id="book"><img src="img/manse-book2.webp" alt="萬歲曆" width="1214" height="933"></div>
  <div class="card" id="manseCard"></div>
  <div style="padding:0 14px">
-  <button class="cta" type="button" data-go="baby"><img src="img/bd-go.webp" alt="이름 지으러 가기"></button>
-  <button class="cta2" type="button" data-go="gamjeong"><img src="img/bd-gam.webp" alt="감정 받기"></button>
+  <button class="cta" type="button" data-go="baby">아기 이름 지으러 가기</button>
+  <button class="lbtn" type="button" data-go="gamjeong" style="margin-top:12px">지어 둔 이름 감정 받기</button>
  </div>
 </section>
 
@@ -616,12 +623,12 @@ a{color:inherit}
  <div class="top noprint"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
  <h2 class="certh" id="certH">성명장</h2>
  <div class="certw"><img id="certImg" alt="성명장"></div>
- <div class="btns noprint"><button type="button" id="certSave"><img src="img/bl-save.webp" alt="성명장 사진으로 저장"></button><button type="button" id="certPrint"><img src="img/bl-print.webp" alt="인쇄하기"></button></div>
+ <div class="btns noprint"><button type="button" class="lbtn" id="certSave">사진으로 저장</button><button type="button" class="lbtn" id="certPrint">인쇄하기</button></div>
  <h2 class="certh">풀이첩 <small>이 이름의 팔자와 풀이 전부</small></h2>
  <div class="certw"><img id="bookImg" alt="풀이첩"></div>
- <div class="btns noprint" style="grid-template-columns:1fr"><button type="button" id="bookSave"><img src="img/bl-save.webp" alt="풀이첩 사진으로 저장" style="max-width:300px;margin:0 auto"></button></div>
+ <div class="btns noprint" style="grid-template-columns:1fr"><button type="button" class="lbtn" id="bookSave" style="width:min(100%,340px);margin:0 auto">풀이첩 사진으로 저장</button></div>
  <p class="cert-note noprint">사진으로 저장하면 휴대폰 사진첩에 남습니다. 카카오톡 안 브라우저에서는 그림을 길게 눌러 저장하십시오.</p>
- <button class="cta2 noprint" type="button" data-home><img src="img/bl-home.webp" alt="처음으로"></button>
+ <button class="lbtn noprint" type="button" data-home style="margin-top:14px">처음으로</button>
 </section>
 
 </div>
@@ -632,7 +639,7 @@ a{color:inherit}
 
 <!-- 약관·개인정보처리방침·환불정책·사업자정보 -->
 <div class="pol" id="pol" role="dialog" aria-label="약관과 방침"><div class="box">
- <div class="polh"><div class="polt"><button type="button" data-pt="terms">약관</button><button type="button" data-pt="privacy">개인정보처리방침</button><button type="button" data-pt="refund">환불정책</button><button type="button" data-pt="biz">사업자정보</button></div><button type="button" class="polx" data-pol="x" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button></div>
+ <div class="polh"><div class="polt"><button type="button" data-pt="terms">약관</button><button type="button" data-pt="privacy">개인정보</button><button type="button" data-pt="refund">환불정책</button><button type="button" data-pt="biz">사업자정보</button></div><button type="button" class="polx" data-pol="x" aria-label="닫기"><img src="img/ic-close.webp" alt=""></button></div>
  <div class="polb">
  <section data-ps="terms">
   <h2>이용약관</h2>
