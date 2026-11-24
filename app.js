@@ -305,7 +305,7 @@ function renderFree() {
  if (k === 'gamjeong') {
   const n = v.name
   h += `<div class="pageh"><h1>${esc(n.full)} — 이름 감정</h1><p>${esc(whenText(o, v.saju))}</p></div>
-  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
+  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname n${[...n.fullHj].length}">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
   <p class="grade">총점 <b>?</b> 봉함</p></div><img class="rb" src="img/rod-bot.webp" alt=""></div>
   <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><em aria-label="봉함">封</em></div>` : ckHTML(c)).join('')}<div class="sealed"><img src="img/icon-roots.webp" alt=""><b>이름이 더해진 팔자</b><em aria-label="봉함">封</em></div><div class="sealed"><img src="img/icon-sieve.webp" alt=""><b>바꾼다면 어느 쪽으로</b><em aria-label="봉함">封</em></div></div></div>`
   h += hugiList + priceCard('gamjeong') + miniLinks
@@ -382,7 +382,7 @@ function renderFull() {
  if (k === 'gamjeong') {
   const n = v.name
   h += `<div class="pageh"><h1>${esc(n.full)} — 이름 감정</h1><p>${esc(whenText(o, v.saju))}</p></div>
-  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
+  <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname n${[...n.fullHj].length}">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
   <p class="grade">총점 <b>${n.total}</b>점 · ${esc(n.grade)}(${esc(n.gradeKo)})</p>${sealsFig(n)}</div><img class="rb" src="img/rod-bot.webp" alt=""></div>`
   h += detailCards(n, v.saju)
   if (v.guide) h += guideHTML(v.guide, n)
@@ -457,8 +457,8 @@ function detailCards(x, sj) {
  if (ck.뜻 && ck.뜻.join) h += `<p class="join">${hl(ck.뜻.join)}${ck.뜻.baram ? `<span class="baram">${esc(ck.뜻.baram)}이 되라는 이름</span>` : ''}</p>`
  h += storyHTML(x)
  if (x.palja) h += paljaHTML(x.palja, sj)
- h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
-  ${x.sagyeok.map(g => `<p><b>${['어린 시절', '젊은 날', '한창때', '평생 전체'][['元', '亨', '利', '貞'].indexOf(g.k)]}</b> · ${g.ko} ${g.n}수 ${g.gil ? '좋음' : '<b style="color:var(--red)">나쁨</b>'} — ${esc(g.t)} <span class="note">${esc(g.age)}</span></p>`).join('')}
+ h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.rd || g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
+  <div class="sgl">${x.sagyeok.map(g => `<div class="sgr ${g.gil ? 'gil' : 'hyung'}"><div class="sgh"><b>${['어린 시절', '젊은 날', '한창때', '평생 전체'][['元', '亨', '利', '貞'].indexOf(g.k)]}</b><span>${esc(String(g.age).split(' — ')[1] || '')}</span><em>${g.ko} ${g.n}수 · ${g.gil ? '좋음' : '나쁨'}</em></div><p>${esc(g.t)}${g.rd ? ` <small>${esc(g.rd)}(${esc(g.nm)})</small>` : ''}</p></div>`).join('')}</div>
   <p class="note">성 ${esc(x.surHj)} ${x.surWon}획 · ${x.chars.map(c => `${esc(c.h)} ${c.won}획`).join(' · ')} (원획)</p></div>`
  const root = ck.뿌리, snd = ck.소리
  const nm = [x.surHj.slice(-1), ...x.chars.map(c => c.h)]
@@ -560,11 +560,11 @@ async function drawBook(x, kind) {
  const o = S.input, sj = S.full.saju, W = 1024, FF = '"MSerif","Noto Serif KR",serif'
  const [hanji, logo, seal, ...els] = await Promise.all(['img/hanji.webp', 'img/logo.webp', 'img/seal-muk.webp', ...Object.keys(EL).map(e => `img/el-${EL[e]}.webp`)].map(loadImg))
  const story = x.story || [], pj = x.palja, guide = kind === 'gam' ? S.full.guide : (x.guide || null)
- const all = x.fullHj + x.full + story.join('') + (pj ? pj.lines.join('') : '') + x.checks.map(k => k.title + k.verdict).join('') + (guide ? guide.verdict + guide.lines.join('') : '') + '이름풀이첩타고난사주네시기운열가지잣대한눈더해진팔자바꾼다면어느쪽으로0123456789年月日時점'
+ const all = x.fullHj + x.full + story.join('') + (pj ? pj.lines.join('') : '') + x.checks.map(k => k.title + k.verdict).join('') + (guide ? guide.verdict + guide.lines.join('') : '') + STORY_H.join('') + '◆‘’이되라는사람좋음나쁨' + x.sagyeok.map(g => g.t).join('') + '이름풀이첩타고난사주네시기운열가지잣대한눈더해진팔자바꾼다면어느쪽으로0123456789年月日時점'
  try { await Promise.all([document.fonts.load(`700 40px ${FF}`, all), document.fonts.load(`500 30px ${FF}`, all)]) } catch (e) {}
- const cv = document.createElement('canvas'); cv.width = W; cv.height = 7000
+ const cv = document.createElement('canvas'); cv.width = W; cv.height = 9600
  const c = cv.getContext('2d')
- c.fillStyle = c.createPattern(hanji, 'repeat'); c.fillRect(0, 0, W, 7000)
+ c.fillStyle = c.createPattern(hanji, 'repeat'); c.fillRect(0, 0, W, 9600)
  const L = 84, R = W - 84, TW = R - L
  let y = 70
  c.drawImage(logo, W / 2 - 170, y, 340, 340 * logo.height / logo.width); y += 340 * logo.height / logo.width + 50
@@ -572,6 +572,9 @@ async function drawBook(x, kind) {
  c.fillStyle = '#1e1915'; c.font = `700 112px ${FF}`; c.fillText([...x.fullHj].join(' '), W / 2, y); y += 66
  c.font = `700 44px ${FF}`; c.fillStyle = '#4b433a'; c.fillText([...x.full].join('  '), W / 2, y); y += 66
  c.font = `700 40px ${FF}`; c.fillStyle = '#a93222'; c.fillText(`${x.total}점 · ${x.grade}(${x.gradeKo})`, W / 2, y); y += 40
+ // 이름 한 줄 풀이 — 이 이름이 바라는 사람
+ const bar = (x.checks.find(k => k.key === '뜻') || {}).baram
+ if (bar) { y += 34; c.font = `700 34px ${FF}`; c.fillStyle = '#1e1915'; for (const l of wrapLines(c, `‘${bar}’이 되라는 이름`, TW - 40)) { c.fillText(l, W / 2, y); y += 50 } y -= 10 }
  const head = t => { y += 56; c.textAlign = 'left'; c.fillStyle = '#a93222'; c.fillRect(L, y - 30, 8, 36); c.fillStyle = '#1e1915'; c.font = `700 38px ${FF}`; c.fillText(t, L + 24, y); y += 22; c.strokeStyle = 'rgba(60,45,30,.25)'; c.lineWidth = 2; c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke(); y += 44 }
  const para = (t, size = 35, color = '#1e1915', gap = 54, bold = false) => { c.textAlign = 'left'; c.font = `${bold ? 700 : 500} ${size}px ${FF}`; c.fillStyle = color; for (const l of wrapLines(c, t, TW)) { c.fillText(l, L, y); y += gap } y += 10 }
  // 타고난 사주
@@ -596,11 +599,22 @@ async function drawBook(x, kind) {
  }
  // 한눈 풀이
  head('한눈 풀이')
- story.forEach((l, i) => para(l, 35, i === story.length - 1 ? '#a93222' : '#1e1915', 54, i === story.length - 1))
+ // 갈래마다 붉은 작은 머리말, 문장마다 줄 — 화면의 한눈 풀이와 같은 짜임
+ story.forEach((l, i) => {
+  const last = i === story.length - 1
+  c.textAlign = 'left'; c.font = `700 27px ${FF}`; c.fillStyle = '#a93222'; c.fillText(`◆ ${STORY_H[i] || ''}`, L, y); y += 54
+  sents(l).forEach(z => para(z, 34, last ? '#a93222' : '#1e1915', 52, last))
+  y += 14
+ })
  // 네 시기 운
  head('획수로 보는 네 시기 운')
  const AGE = ['어린 시절', '젊은 날', '한창때', '평생 전체']
- x.sagyeok.forEach((g, i) => para(`${AGE[i]} · ${g.ko} ${g.n}수 ${g.gil ? '좋음' : '나쁨'} — ${g.t}`, 35, g.gil ? '#1e1915' : '#a93222', 54))
+ x.sagyeok.forEach((g, i) => {
+  c.textAlign = 'left'; c.font = `700 33px ${FF}`; c.fillStyle = '#1e1915'; c.fillText(AGE[i], L, y)
+  c.textAlign = 'right'; c.fillStyle = g.gil ? '#4f6b3a' : '#a93222'; c.fillText(`${g.ko} ${g.n}수 · ${g.gil ? '좋음' : '나쁨'}`, R, y); y += 48
+  para(g.t, 32, '#4b433a', 48)
+  y += 6
+ })
  // 열 가지 잣대
  head('열 가지 잣대')
  x.checks.forEach(k => {
