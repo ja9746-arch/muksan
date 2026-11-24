@@ -700,7 +700,7 @@ export function compareNames(a, b, s, adult = true, sameSound = false) {
     : d > 0 ? `${a.total}점 → ${b.total}점. 점수 차는 크지 않지만, 아래 자리에서 지금 이름보다 앞섭니다.`
     : `점수는 지금 이름이 ${a.total}점으로 ${-d || ''}${d ? '점 높습니다' : '같습니다'}. 새 이름은 아래 자리에서만 앞섭니다.`
   return { lead, d, from: { full: a.full, fullHj: a.fullHj, total: a.total, gradeKo: a.gradeKo }, points: P.slice(0, 5).map(({ w, ...x }) => x), mean,
-    worse: wc.length ? `다만 ${wc.map(c => `‘${c.title}’`).join('·')}${batchim(wc[wc.length - 1].title) ? '은' : '는'} 지금 이름이 앞섭니다(${wc.map(c => `${A[c.key].score} → ${c.score}`).join(', ')}).` : '',
+    worse: wc.length ? `다만 ${wc.map(c => `‘${c.title}’`).join('·')}${batchim(wc[wc.length - 1].title) ? '은' : '는'} 지금 이름이 앞섭니다(${wc.map(c => `${A[c.key].score}\u00a0→\u00a0${c.score}점`).join(', ')}).` : '',
     same: same.length ? `${same.join('·')}${batchim(same[same.length - 1]) ? '은' : '는'} 지금 이름처럼 흠이 없습니다.` : '',
     rows: b.checks.map(c => ({ title: c.title, a: A[c.key].score, b: c.score })) }
 }

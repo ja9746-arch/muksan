@@ -370,7 +370,7 @@ function cardHTML(x, i, pickable = true, feat = false, wide = false) {
   <span class="sq"><img class="enso" src="img/enso.webp" alt="" aria-hidden="true">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span>
   <span class="info">${feat ? `<span class="cheon"><img src="img/seal-cheon.webp" alt="薦">묵산이 첫째로 천거</span>` : ''}
    <span class="ko">${esc(x.full)}</span><span class="rule" aria-hidden="true"></span>
-   <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span>
+   <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span>${x.vs && x.vs.d > 0 ? `<span class="vup">지금보다 <b>+${f1(x.vs.d)}</b>점</span>` : ''}
    ${seals.length ? `<span class="ms">${seals.map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}" title="${SEALIMG[s][1]}">`).join('')}</span>` : ''}
    <span class="kk">${esc(meanLine(x))}</span>
    <span class="go" aria-hidden="true">풀이 펼치기</span></span></button>
@@ -392,7 +392,7 @@ function renderFull() {
  } else {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'}<br>이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
-  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
+  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><p class="note">새 이름을 누르면 ‘지금 이름과 견주면’에 무엇이 어떻게 달라지는지 자리마다 적어 두었습니다.</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
   // 1위가 한 줄을 다 쓰면 나머지가 홀수 — 끝 장도 넓게 펴서 외톨이 칸을 없앤다
   const hasFeat = page.some(x => x.rank === 1), oddTail = hasFeat && (page.length - 1) % 2 === 1
@@ -455,6 +455,7 @@ function detailCards(x, sj) {
  const WX = [0.8, 25.8, 50.2, 74.6]
  let h = ''
  if (ck.뜻 && ck.뜻.join) h += `<p class="join">${hl(ck.뜻.join)}${ck.뜻.baram ? `<span class="baram">${esc(ck.뜻.baram)}이 되라는 이름</span>` : ''}</p>`
+ h += vsHTML(x) + meritHTML(x)
  h += storyHTML(x)
  if (x.palja) h += paljaHTML(x.palja, sj)
  h += `<div class="card"><h2><img src="img/icon-rods.webp" alt="">원형이정 — 수리 사격</h2><div class="wh"><img src="img/wonhyeong.webp" alt="元亨利貞">${x.sagyeok.map((g, i) => `<div class="bx ${g.gil ? 'gil' : 'hyung'}" style="left:${WX[i]}%;width:24.4%"><b>${g.n}</b><span>${esc(g.rd || g.nm)} · ${g.gil ? '길' : '흉'}</span></div>`).join('')}</div>
@@ -469,6 +470,26 @@ function detailCards(x, sj) {
  }
  h += `</div><div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><div class="chk10">${x.checks.map(ckHTML).join('')}</div></div>`
  return h
+}
+/* ───────── 이 이름을 고르면 좋은 점 · 지금 이름과 견주면 ─────────
+   점수표만으로는 '왜 좋은가'가 안 보인다 — 좋아지는 자리를 말로, 지금 이름은 옅게 새 이름은 짙게 */
+const f1 = n => Number(n).toFixed(n % 1 ? 1 : 0)
+function meritHTML(x) {
+ const m = x.merit; if (!m || !m.points.length) return ''
+ return `<div class="card merit"><h2><img src="img/icon-plum.webp" alt="">${esc(m.lead)}</h2><ul class="mrt">${m.points.map(p => `<li><b>${hl(p.t)}</b><p>${hl(p.d)}</p></li>`).join('')}</ul></div>`
+}
+function vsHTML(x) {
+ const v = x.vs; if (!v) return ''
+ const same = S.full && S.full.kind === 'gamjeong'
+ const col = (cls, lab, hj, ko, t) => `<div class="${cls}"><small>${lab}</small><b class="n${[...hj].length}">${esc(hj)}</b><span>${esc(ko)}</span><em><i>${t}</i>점</em></div>`
+ const pt = p => `<section class="vp"><h3><span>${esc(p.t)}</span>${p.n ? `<small>${esc(p.n)}</small>` : ''}</h3><div class="vr was"><i>지금</i><p>${hl(p.a)}</p></div><div class="vr now"><i>${same ? '새 한자' : '새 이름'}</i><p>${hl(p.b)}</p></div></section>`
+ const up = r => r.b > r.a ? 'up' : r.b < r.a ? 'dn' : ''
+ return `<div class="card vs"><h2><img src="img/icon-scale.webp" alt="">${same ? '지금 한자와 견주면' : '지금 이름과 견주면'}</h2>
+  <div class="vsh">${col('vo', same ? '지금 한자' : '지금 이름', v.from.fullHj, v.from.full, v.from.total)}<img class="va" src="img/arrow-gen.webp" alt="에서">${col('vn', same ? '새 한자' : '새 이름', x.fullHj, x.full, x.total)}</div>
+  <p class="vlead">${hl(v.lead)}</p>
+  ${v.points.map(pt).join('')}${v.mean ? pt({ t: v.mean.t, a: v.mean.a, b: v.mean.b }) : ''}
+  ${v.worse || v.same ? `<div class="vfoot">${v.worse ? `<p>${hl(v.worse)}</p>` : ''}${v.same ? `<p>${hl(v.same)}</p>` : ''}</div>` : ''}
+  <table class="vtab"><caption>열 가지 잣대 — 지금과 새 ${same ? '한자' : '이름'}</caption><thead><tr><th scope="col">잣대</th><th scope="col">지금</th><th scope="col">${same ? '새 한자' : '새 이름'}</th></tr></thead><tbody>${v.rows.map(r => `<tr class="${up(r)}"><th scope="row">${esc(r.title)}</th><td>${f1(r.a)}</td><td>${f1(r.b)}${r.b !== r.a ? `<i>${r.b > r.a ? '▲' : '▼'}</i>` : ''}</td></tr>`).join('')}</tbody></table></div>`
 }
 let sheetX = null
 function openSheet(x) {
@@ -560,11 +581,11 @@ async function drawBook(x, kind) {
  const o = S.input, sj = S.full.saju, W = 1024, FF = '"MSerif","Noto Serif KR",serif'
  const [hanji, logo, seal, ...els] = await Promise.all(['img/hanji.webp', 'img/logo.webp', 'img/seal-muk.webp', ...Object.keys(EL).map(e => `img/el-${EL[e]}.webp`)].map(loadImg))
  const story = x.story || [], pj = x.palja, guide = kind === 'gam' ? S.full.guide : (x.guide || null)
- const all = x.fullHj + x.full + story.join('') + (pj ? pj.lines.join('') : '') + x.checks.map(k => k.title + k.verdict).join('') + (guide ? guide.verdict + guide.lines.join('') : '') + STORY_H.join('') + '◆‘’이되라는사람좋음나쁨' + x.sagyeok.map(g => g.t).join('') + '이름풀이첩타고난사주네시기운열가지잣대한눈더해진팔자바꾼다면어느쪽으로0123456789年月日時점'
+ const all = x.fullHj + x.full + story.join('') + (pj ? pj.lines.join('') : '') + x.checks.map(k => k.title + k.verdict).join('') + (guide ? guide.verdict + guide.lines.join('') : '') + STORY_H.join('') + '◆‘’이되라는사람좋음나쁨' + x.sagyeok.map(g => g.t).join('') + (x.vs ? JSON.stringify(x.vs) : '') + (x.merit ? JSON.stringify(x.merit) : '') + '▲▼지금새한자견주면' + '이름풀이첩타고난사주네시기운열가지잣대한눈더해진팔자바꾼다면어느쪽으로0123456789年月日時점'
  try { await Promise.all([document.fonts.load(`700 40px ${FF}`, all), document.fonts.load(`500 30px ${FF}`, all)]) } catch (e) {}
- const cv = document.createElement('canvas'); cv.width = W; cv.height = 9600
+ const cv = document.createElement('canvas'); cv.width = W; cv.height = 13600
  const c = cv.getContext('2d')
- c.fillStyle = c.createPattern(hanji, 'repeat'); c.fillRect(0, 0, W, 9600)
+ c.fillStyle = c.createPattern(hanji, 'repeat'); c.fillRect(0, 0, W, 13600)
  const L = 84, R = W - 84, TW = R - L
  let y = 70
  c.drawImage(logo, W / 2 - 170, y, 340, 340 * logo.height / logo.width); y += 340 * logo.height / logo.width + 50
@@ -577,6 +598,28 @@ async function drawBook(x, kind) {
  if (bar) { y += 34; c.font = `700 34px ${FF}`; c.fillStyle = '#1e1915'; for (const l of wrapLines(c, `‘${bar}’이 되라는 이름`, TW - 40)) { c.fillText(l, W / 2, y); y += 50 } y -= 10 }
  const head = t => { y += 56; c.textAlign = 'left'; c.fillStyle = '#a93222'; c.fillRect(L, y - 30, 8, 36); c.fillStyle = '#1e1915'; c.font = `700 38px ${FF}`; c.fillText(t, L + 24, y); y += 22; c.strokeStyle = 'rgba(60,45,30,.25)'; c.lineWidth = 2; c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke(); y += 44 }
  const para = (t, size = 35, color = '#1e1915', gap = 54, bold = false) => { c.textAlign = 'left'; c.font = `${bold ? 700 : 500} ${size}px ${FF}`; c.fillStyle = color; for (const l of wrapLines(c, t, TW)) { c.fillText(l, L, y); y += gap } y += 10 }
+ // 지금 이름과 견주면 / 이 이름을 고르면 좋은 점 — 풀이첩 맨 앞에. 왜 이 이름인지부터
+ const sub = (t, n) => { c.textAlign = 'left'; c.font = `700 28px ${FF}`; c.fillStyle = '#a93222'; c.fillText(`◆ ${t}`, L, y); if (n) { c.textAlign = 'right'; c.fillStyle = '#4b433a'; c.font = `700 26px ${FF}`; c.fillText(n, R, y) } y += 52 }
+ if (x.vs) {
+  const v = x.vs, sm = kind === 'gam' || S.full.kind === 'gamjeong'
+  head(sm ? '지금 한자와 견주면' : '지금 이름과 견주면')
+  c.textAlign = 'center'; c.font = `700 56px ${FF}`; c.fillStyle = '#857a6c'; c.fillText([...v.from.fullHj].join(' '), L + TW * 0.22, y + 40); c.fillStyle = '#1e1915'; c.fillText([...x.fullHj].join(' '), L + TW * 0.78, y + 40)
+  c.font = `500 26px ${FF}`; c.fillStyle = '#857a6c'; c.fillText(`${v.from.full} · ${v.from.total}점`, L + TW * 0.22, y + 86); c.fillStyle = '#a93222'; c.font = `700 26px ${FF}`; c.fillText(`${x.full} · ${x.total}점`, L + TW * 0.78, y + 86)
+  c.strokeStyle = '#a93222'; c.lineWidth = 3; c.beginPath(); c.moveTo(L + TW * 0.44, y + 28); c.lineTo(L + TW * 0.56, y + 28); c.lineTo(L + TW * 0.54, y + 18); c.moveTo(L + TW * 0.56, y + 28); c.lineTo(L + TW * 0.54, y + 38); c.stroke()
+  y += 140
+  para(v.lead, 34, '#a93222', 52, true); y += 8
+  for (const p of [...v.points, ...(v.mean ? [{ t: v.mean.t, a: v.mean.a, b: v.mean.b }] : [])]) {
+   sub(p.t, p.n)
+   para('지금 — ' + p.a, 31, '#857a6c', 47)
+   para((sm ? '새 한자 — ' : '새 이름 — ') + p.b, 32, '#1e1915', 49, true)
+   y += 10
+  }
+  if (v.worse) para(v.worse, 29, '#4b433a', 44)
+  if (v.same) para(v.same, 29, '#4b433a', 44)
+ } else if (x.merit && x.merit.points.length) {
+  head(x.merit.lead)
+  for (const p of x.merit.points) { sub(p.t); para(p.d, 33, '#1e1915', 50); y += 8 }
+ }
  // 타고난 사주
  head('타고난 사주')
  para(whenText(o, sj), 32, '#4b433a', 48)
