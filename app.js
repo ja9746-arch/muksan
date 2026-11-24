@@ -62,10 +62,11 @@ fetch('api/name?sur=1').then(r => r.json()).then(j => {
 priceFill()
 /* 거르는 수 — 줄마다 먹 막대. 9천에서 수십까지 한 화면에 보이게 막대 길이는 로그로 잰다 */
 const funnelRows = (f, last) => {
- const R = [['인명용 한자', f.전체, '자'], ['이름에 쓰는 글자로 엮은 조합', f.이름글자], ['수리 사격 넷이 모두 길한 것', f.수리],
+ // 돌림자가 있으면 돌림자를 그대로 두고 남은 한 글자를 고르는 길이라, 그 길로 센 수만 보인다
+ const R = f.돌림 ? [['인명용 한자', f.전체, '자'], [`돌림자 ${f.돌림}${bat(f.돌림) ? '과' : '와'} 엮은 조합`, f.이름글자]]
+  : [['인명용 한자', f.전체, '자'], ['이름에 쓰는 글자로 엮은 조합', f.이름글자], ['수리 사격 넷이 모두 길한 것', f.수리],
   ['음양이 어울리는 것', f.음양], ['소리가 부딪치지 않는 것', f.소리], ['사주에 모자란 기운을 채우는 것', f.사주]]
- if (f.늦춤) R.push(['엄한 잣대를 모두 넘은 이름', f.남은이름, '개'], ['잣대를 늦춰 더 찾은 이름', f.늦춤, '개'])
- R.push([last, f.늦춤 ? f.남은이름 + f.늦춤 : f.남은이름, '개', 1])
+ R.push([last, f.남은이름 + (f.늦춤 || 0), '개', 1])
  const top = Math.log10(Math.max(...R.slice(1).map(r => r[1] || 1), 10)), lo = Math.log10(Math.max(1, Math.min(...R.map(r => r[1] || 1)) / 3))
  const w = v => Math.max(3, Math.round(((Math.log10(Math.max(v, 1)) - lo) / (top - lo || 1)) * 100))
  // 첫 줄(글자 수)은 단위가 달라 막대를 두지 않는다 — 둘째 줄부터가 체로 줄어드는 이름 수
@@ -311,9 +312,7 @@ function renderFree() {
  } else {
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 열 개를<br>봉해 두었습니다</h1><p>${esc(whenText(o, v.saju))}</p></div>`
   h += sajuCard(v.saju)
-  h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">체로 거른 수</h2><div class="sieve">${funnelRows(v.funnel, '남은 이름')}</div><p class="note" style="margin-top:8px">남은 이름 가운데 점수가 높은 열 개를 봉했고, 결제하면 다음 열 개까지 스무 개를 펼칩니다.</p></div>`
-  // 결제 전에 알린다 — 엄한 잣대만으로 스무 개가 안 차면 늦춘 이름이 섞인다는 것
-  if (v.funnel.늦춤) h += `<div class="relaxnote"><b>${v.funnel.남은이름 ? '잣대를 늦춘 이름이 섞입니다' : '잣대를 늦춘 이름으로 채웁니다'}</b><p>${o.dolKo ? `돌림자 ‘${esc(o.dolKo)}’를 넣으면 ` : ''}엄한 잣대를 모두 넘는 이름이 ${v.funnel.남은이름 ? v.funnel.남은이름 + '개뿐입니다' : '없습니다'}. 스무 개를 채우려 잣대를 늦춘 이름이 ${v.funnel.남은이름 ? '섞이고' : '들어가고'}, 늦춘 이름은 점수가 낮게 나옵니다.${o.dolKo ? ' 돌림자를 빼고 지으면 엄한 잣대만으로 스무 개를 드립니다.' : ''}</p></div>`
+  h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">체로 거른 수</h2><div class="sieve">${funnelRows(v.funnel, '남은 이름')}</div><p class="note" style="margin-top:8px">${v.funnel.돌림 ? `돌림자 ${esc(v.funnel.돌림)}${bat(v.funnel.돌림) ? '은' : '는'} 그대로 두고, 남은 한 글자로 사주를 채우는 이름을 골랐습니다. ` : ''}남은 이름 가운데 점수가 높은 열 개를 봉했고, 결제하면 다음 열 개까지 스무 개를 펼칩니다.</p></div>`
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름</h2><p><b style="font-size:20px">${esc(v.current.fullHj)}</b> ${esc(v.current.full)} — 등급 <b style="color:var(--red)">${esc(v.current.grade)}(${esc(v.current.gradeKo)})</b></p><p class="note">어느 잣대에서 깎였는지는 결제 뒤 펼쳐 드립니다.</p></div>`
   h += `<div class="card"><h2><img src="img/seal-empty.webp" alt="">봉한 이름</h2><div class="envs">${v.sealed.map((x, i) => `<div class="env"><img src="img/env.webp" alt=""><div class="l"><b>${ORD[i]} 이름</b>${esc(o.sur)}○○</div><div class="r"><b>${x.total}점</b>${esc(x.grade)}${msealHTML(i === 0 ? ['薦', ...x.seals] : x.seals)}</div></div>`).join('')}</div></div>`
   h += hugiList + priceCard(k) + miniLinks
@@ -354,7 +353,7 @@ function cardHTML(x, i, pickable = true, feat = false, wide = false) {
   <span class="sq"><img class="enso" src="img/enso.webp" alt="" aria-hidden="true">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span>
   <span class="info">${feat ? `<span class="cheon"><img src="img/seal-cheon.webp" alt="薦">묵산이 첫째로 천거</span>` : ''}
    <span class="ko">${esc(x.full)}</span><span class="rule" aria-hidden="true"></span>
-   <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span>${x.relaxed ? '<span class="rx">잣대 늦춤</span>' : ''}
+   <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span>
    ${seals.length ? `<span class="ms">${seals.map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}" title="${SEALIMG[s][1]}">`).join('')}</span>` : ''}
    <span class="kk">${esc(meanLine(x))}</span>
    <span class="go" aria-hidden="true">풀이 펼치기</span></span></button>
@@ -377,8 +376,6 @@ function renderFull() {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'}<br>이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
-  if (list.some(x => x.relaxed)) { const nStrict = list.filter(x => !x.relaxed).length
-   h += `<div class="relaxnote"><b>${nStrict ? '잣대를 늦춘 이름이 섞여 있습니다' : '스무 개 모두 잣대를 늦춰 지었습니다'}</b><p>${o.dolKo ? `돌림자 ‘${esc(o.dolKo)}’를 넣으면 ` : ''}이 사주로 엄한 잣대를 모두 넘는 이름이 ${nStrict ? nStrict + '개뿐입니다' : '없습니다'}. ${nStrict ? '나머지는' : '그래서'} ${o.dolKo ? '돌림자 자리의 기운은 따지지 않고 다른 한 자로 사주를 채우거나, ' : ''}사격·소리를 점수로만 보는 식으로 잣대를 늦춰 채웠습니다. 늦춘 만큼 점수가 낮게 나오고, 카드에 ‘잣대 늦춤’이라고 적혀 있습니다.${o.dolKo ? ' 돌림자를 빼고 다시 지으면 엄한 잣대만으로 스무 개가 찹니다.' : ''}</p></div>` }
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
   // 1위가 한 줄을 다 쓰면 나머지가 홀수 — 끝 장도 넓게 펴서 외톨이 칸을 없앤다
   const hasFeat = page.some(x => x.rank === 1), oddTail = hasFeat && (page.length - 1) % 2 === 1

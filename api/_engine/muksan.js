@@ -697,6 +697,7 @@ export function generate(o, s) {
   // 돌림자는 집안이 정한 글자 — 엄한 차례에서도 그 자리의 기운은 따지지 않고, 다른 한 자가 사주를 채우는지를 본다
   run(more, { snd: true, suri: 4, saju: o.dolKo ? 5 : 6.5, count: true, ...(o.dolKo ? { el: 'free', needGood: true } : {}) })
   funnel.남은이름 = best.length
+  if (o.dolKo) funnel.돌림 = `${o.dolKo}(${o.dolHj})`
   if (best.length < 20) {
     run(more, { snd: false, suri: 3, saju: 5, count: false })
     /* 돌림자가 이 사주가 꺼리는 기운이거나 성과 획수가 맞지 않으면 위 두 차례로도 0개가 나왔다(400건 중 91건).
