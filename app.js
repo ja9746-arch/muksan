@@ -50,7 +50,7 @@ $$('[data-home]').forEach(b => b.addEventListener('click', () => { show('home', 
 
 /* ───────── 대문 ───────── */
 const S = { kind: null, input: null, free: null, full: null, manse: null, picks: [], page: 0 }
-$('#tenList').innerHTML = TEN.map(([ic, t, d]) => `<li><img src="img/icon-${ic}.webp" alt="" loading="lazy"><div><b>${t}</b><span>${d}</span></div></li>`).join('')
+$('#tenList').innerHTML = TEN.map(([ic, t, d], i) => `<li><i aria-hidden="true">${'一二三四五六七八九十'[i]}</i><img src="img/icon-${ic}.webp" alt="" loading="lazy"><div><b>${t}</b><span>${d}</span></div></li>`).join('')
 const priceFill = () => $$('[data-price]').forEach(e => { const p = PRICE[e.dataset.price]; if (p) e.textContent = won(p) + '원' })
 fetch('api/name?sur=1').then(r => r.json()).then(j => {
  if (!j || !j.ok) return
@@ -58,10 +58,17 @@ fetch('api/name?sur=1').then(r => r.json()).then(j => {
  $$('[data-hc]').forEach(e => e.textContent = won(HC))
 }).catch(() => {})
 priceFill()
-const funnelRows = (f, last) => [
- ['인명용 한자', won(f.전체) + '자'], ['이름에 쓰는 글자로 엮은 조합', won(f.이름글자)], ['수리 사격 넷이 모두 길한 것', won(f.수리)],
- ['음양이 어울리는 것', won(f.음양)], ['소리가 부딪치지 않는 것', won(f.소리)], ['사주에 모자란 기운을 채우는 것', won(f.사주)],
-].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('') + (f.늦춤 ? `<div><span>엄한 잣대를 모두 넘은 이름</span><b>${won(f.남은이름)}개</b></div><div><span>돌림자 때문에 소리를 점수로만 보고 더 찾은 이름</span><b>${won(f.늦춤)}개</b></div><div class="last"><span>${last}</span><b>${won(f.남은이름 + f.늦춤)}개</b></div>` : `<div class="last"><span>${last}</span><b>${won(f.남은이름)}개</b></div>`)
+/* 거르는 수 — 줄마다 먹 막대. 9천에서 수십까지 한 화면에 보이게 막대 길이는 로그로 잰다 */
+const funnelRows = (f, last) => {
+ const R = [['인명용 한자', f.전체, '자'], ['이름에 쓰는 글자로 엮은 조합', f.이름글자], ['수리 사격 넷이 모두 길한 것', f.수리],
+  ['음양이 어울리는 것', f.음양], ['소리가 부딪치지 않는 것', f.소리], ['사주에 모자란 기운을 채우는 것', f.사주]]
+ if (f.늦춤) R.push(['엄한 잣대를 모두 넘은 이름', f.남은이름, '개'], ['돌림자 때문에 소리를 점수로만 보고 더 찾은 이름', f.늦춤, '개'])
+ R.push([last, f.늦춤 ? f.남은이름 + f.늦춤 : f.남은이름, '개', 1])
+ const top = Math.log10(Math.max(...R.slice(1).map(r => r[1] || 1), 10)), lo = Math.log10(Math.max(1, Math.min(...R.map(r => r[1] || 1)) / 3))
+ const w = v => Math.max(3, Math.round(((Math.log10(Math.max(v, 1)) - lo) / (top - lo || 1)) * 100))
+ // 첫 줄(글자 수)은 단위가 달라 막대를 두지 않는다 — 둘째 줄부터가 체로 줄어드는 이름 수
+ return R.map(([a, v, u, l], i) => `<div class="sv${l ? ' last' : ''}"><span>${a}</span><b>${won(v)}${u || ''}</b>${i ? `<em style="--w:${w(v)}%"></em>` : ''}</div>`).join('')
+}
 post('api/name', { input: { kind: 'baby', sex: '남', cal: '양력', y: 2026, m: 3, d: 14, h: 8, mi: 0, sur: '김', surHj: '金' } })
  .then(j => { if (j && j.ok) $('#sieveDemo').innerHTML = funnelRows(j.view.funnel, '남은 이름') }).catch(() => {})
 
@@ -86,20 +93,24 @@ $('#wish').addEventListener('click', e => {
 })
 const hanjaCache = new Map()
 const hanjaOf = eum => hanjaCache.get(eum) || (hanjaCache.set(eum, fetch('api/name?eum=' + encodeURIComponent(eum)).then(r => r.json()).then(j => j && j.ok ? j.list : []).catch(() => [])), hanjaCache.get(eum))
+const hunFull = (hun, eum) => String(hun || '').split(', ').filter(Boolean).map(w => `${w} ${eum}`).join(', ')
 function picker(box, eum, chosen, onPick, label) {
  return hanjaOf(eum).then(list => {
   const wrap = document.createElement('div')
   if (!list.length) { wrap.innerHTML = `<p class="pk-h">‘${esc(eum)}’ 소리로 쓸 수 있는 인명용 한자가 없습니다.</p>`; box.appendChild(wrap); return }
   let full = false
   const draw = () => {
-   const L = full ? list : list.slice(0, 16)
-   wrap.innerHTML = `<p class="pk-h">${label} ‘${esc(eum)}’ — ${chosen() ? `<b>${esc(chosen())}</b> 고름` : '한자를 골라 주십시오'}</p><div class="picker">${L.map(x => `<button type="button" data-h="${esc(x.h)}" aria-pressed="${x.h === chosen()}"><b>${esc(x.h)}</b><span>${esc(x.hun || '')}</span></button>`).join('')}</div>${!full && list.length > 16 ? `<button type="button" class="more">글자 ${list.length - 16}개 더 보기</button>` : ''}`
+   const L = full ? list : list.slice(0, 16), cx = list.find(x => x.h === chosen())
+   // 고른 글자는 뜻을 줄이지 않고 다 적는다 — 칸에는 두 줄까지만 들어가므로
+   const sel = cx ? `<div class="pk-sel" aria-live="polite"><b>${esc(cx.h)}</b><span><em>${esc(hunFull(cx.hun, eum))}</em><small>원획 ${cx.won}획 · 뿌리 기운 ${ELKO[cx.el] || ''}(${esc(cx.el || '')})${cx.pool ? ' · 이름에 자주 쓰는 글자' : ''}</small></span></div>` : ''
+   wrap.innerHTML = `<p class="pk-h">${label} ‘${esc(eum)}’ — ${cx ? '고른 글자' : '한자를 골라 주십시오'}</p>${sel}<div class="picker">${L.map(x => `<button type="button" data-h="${esc(x.h)}" aria-pressed="${x.h === chosen()}" aria-label="${esc(x.h)} ${esc(hunFull(x.hun, eum))}"><b>${esc(x.h)}</b><span>${esc(x.hun || '')}</span></button>`).join('')}</div>${!full && list.length > 16 ? `<button type="button" class="more">글자 ${list.length - 16}개 더 보기</button>` : ''}`
   }
   draw()
   wrap.addEventListener('click', e => {
    if (e.target.closest('.more')) { full = true; return draw() }
    const b = e.target.closest('[data-h]'); if (!b) return
    onPick(b.dataset.h); draw()
+   const x = list.find(y => y.h === b.dataset.h); x && toast(`${x.h} — ${hunFull(x.hun, eum)}`, 2600)
   })
   box.appendChild(wrap)
  })
@@ -290,7 +301,7 @@ function renderFree() {
   h += `<div class="pageh"><h1>${esc(n.full)} — 이름 감정</h1><p>${esc(whenText(o, v.saju))}</p></div>
   <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
   <p class="grade">총점 <b>?</b> 봉함</p></div><img class="rb" src="img/rod-bot.webp" alt=""></div>
-  <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b>${c.no}. ${esc(c.title)}</b><em>封</em></div>` : ckHTML(c)).join('')}<div class="sealed"><img src="img/icon-roots.webp" alt=""><b>이름이 더해진 팔자</b><em>封</em></div><div class="sealed"><img src="img/icon-sieve.webp" alt=""><b>바꾼다면 어느 쪽으로</b><em>封</em></div></div></div>`
+  <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><em aria-label="봉함">封</em></div>` : ckHTML(c)).join('')}<div class="sealed"><img src="img/icon-roots.webp" alt=""><b>이름이 더해진 팔자</b><em aria-label="봉함">封</em></div><div class="sealed"><img src="img/icon-sieve.webp" alt=""><b>바꾼다면 어느 쪽으로</b><em aria-label="봉함">封</em></div></div></div>`
   h += priceCard('gamjeong') + miniLinks
  } else {
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 열 개를<br>봉해 두었습니다</h1><p>${esc(whenText(o, v.saju))}</p></div>`
@@ -318,19 +329,28 @@ function guideHTML(g, n, withCta = true) {
  return `<div class="card guide"><h2><img src="img/icon-sieve.webp" alt="">바꾼다면 어느 쪽으로</h2><p class="v2">${esc(g.verdict)}</p>
   ${g.lines.map(l => `<p>${esc(l)}</p>`).join('')}
   ${g.need.map(nd => `<p class="pk-h">${esc(nd.ko)} 기운 글자 보기</p><div class="exs">${nd.ex.map(x => `<span><b>${esc(x.h)}</b>${esc(x.eum)} · ${esc(x.k)}</span>`).join('')}</div>`).join('')}
-  ${withCta && g.samples && g.samples.length ? `<p class="pk-h">같은 생년월일로 개명 이름을 지으면 맨 위 셋</p><div class="samples">${g.samples.map(x => `<div><b>${esc(x.full)}</b><span>${x.total}점 · ${esc(x.grade)}</span><em>한자 封</em></div>`).join('')}</div>
+  ${withCta && g.samples && g.samples.length ? `<p class="pk-h">같은 생년월일로 지은 개명 이름 맨 위 셋</p><div class="samples">${g.samples.map(x => `<div><b>${esc(x.full)}</b><span>${x.total}점 · ${esc(x.grade)}</span><em>한자 封</em></div>`).join('')}</div>
   <p class="note">한자와 열 잣대 풀이, 나머지 열일곱 이름은 ‘개명할 이름 짓기’에서 펼칩니다. 넣으신 성·생년월일·지금 이름을 그대로 옮겨 드립니다.</p>
   <button class="cta" type="button" id="toRename"><span class="dbtn">개명할 이름 짓기 · <span data-price="rename">${won(PRICE.rename)}원</span></span></button>` : ''}</div>`
 }
 
 /* ───────── 결제한 결과 ───────── */
-function cardHTML(x, i, pickable = true) {
+const HN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
+const meanLine = x => x.chars.map(c => c.k || (c.hun && c.hun[0]) || '').join(' · ')
+/* 이름 한 장 — 한지 명첩. 순위는 주묵 낙관, 한자는 원상 안에 세로로 */
+function cardHTML(x, i, pickable = true, feat = false) {
  const on = S.picks.includes(x)
- return `<button type="button" class="nc" data-i="${i}" aria-label="${esc(x.full)} ${x.total}점 자세히"><span class="rk">${x.rank ? x.rank + '위' : ''}</span>
-  <span class="sq">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span><span class="ko">${esc(x.full)}</span>
-  <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span><span class="ms">${(x.rank === 1 ? ['薦', ...x.seals] : x.seals).map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}">`).join('')}</span>
-  <span class="kk">${esc(x.chars.map(c => c.k || (c.hun && c.hun[0]) || '').join(' · '))}</span>
-  ${pickable ? `<span class="pick" data-pick="${i}" role="checkbox" aria-checked="${on}" aria-label="견주기에 담기"><img src="img/${on ? 'ic-boxon' : 'ic-box'}.webp" alt=""></span>` : ''}</button>`
+ const seals = (x.rank === 1 ? ['薦', ...x.seals] : x.seals).filter(s => !(feat && s === '薦'))
+ return `<article class="nc${feat ? ' feat' : ''}"><button type="button" class="nc-open" data-i="${i}" aria-label="${esc(x.full)} ${x.total}점 풀이 펼치기">
+  ${x.rank ? `<span class="rk" aria-hidden="true">${HN[x.rank] || x.rank}</span>` : ''}
+  <span class="sq"><img class="enso" src="img/enso.webp" alt="" aria-hidden="true">${[...x.givenHj].map(c => `<b>${esc(c)}</b>`).join('')}</span>
+  <span class="info">${feat ? `<span class="cheon"><img src="img/seal-cheon.webp" alt="薦">묵산이 첫째로 천거</span>` : ''}
+   <span class="ko">${esc(x.full)}</span><span class="rule" aria-hidden="true"></span>
+   <span class="sc"><b>${x.total}</b>점 · ${esc(x.grade)}</span>
+   ${seals.length ? `<span class="ms">${seals.map(s => `<img src="img/${SEALIMG[s][0]}.webp" alt="${s}" title="${SEALIMG[s][1]}">`).join('')}</span>` : ''}
+   <span class="kk">${esc(meanLine(x))}</span>
+   <span class="go" aria-hidden="true">풀이 펼치기</span></span></button>
+  ${pickable ? `<button type="button" class="pick" data-pick="${i}" aria-pressed="${on}">${on ? '견주기에 담음' : '견주기에 담기'}</button>` : ''}</article>`
 }
 function renderFull() {
  const v = S.full, o = S.input, k = v.kind
@@ -351,9 +371,9 @@ function renderFull() {
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
   if (list.some(x => x.relaxed)) h += `<p class="mini" style="margin:12px 18px 0;text-align:left">돌림자 ‘${esc(o.dolKo || '')}’가 성과 소리가 부딪쳐, 엄한 잣대를 다 넘는 이름이 스물이 안 됩니다. 소리 오행을 점수로만 보고 사격 넷 가운데 셋이 길한 이름으로 나머지를 채웠습니다(점수에 그대로 드러납니다).</p>`
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
-  h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j)).join('')}</div>`
+  h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j, true, x.rank === 1)).join('')}</div>`
   h += `<div class="btns"><button type="button" id="again"><img src="img/bl-again.webp" alt="${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}"></button><button type="button" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true" style="opacity:.5"' : ''}><img src="img/bl-compare.webp" alt="나란히 견주기"></button></div>`
-  h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} 네모 칸을 눌러 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
+  h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} ‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
   h += sajuCard(v.saju)
   if (k === 'rename') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">개명은 이렇게 합니다</h2><p>① 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 냅니다. 새 이름의 한글과 한자를 함께 적고, 바꾸려는 까닭을 밝힙니다.</p><p>② 법원이 허가하면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 신고가 끝나면 주민등록·여권·은행·보험 등의 이름을 차례로 바꿉니다.</p><p class="note">2024년 한 해 개명 허가는 8만 4천여 건이었습니다. 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
   h += miniLinks
@@ -363,22 +383,20 @@ function renderFull() {
 }
 function bindFull() {
  const v = S.full
- $$('#fullBody .nc').forEach(b => b.addEventListener('click', e => {
-  const pk = e.target.closest('[data-pick]')
-  const i = b.dataset.i, x = String(i).startsWith('b') ? v.better[+i.slice(1)] : v.list[+i]
-  if (pk) {
-   e.stopPropagation()
-   const on = S.picks.includes(x)
-   if (!on && S.picks.length >= 3) return toast('견주기는 셋까지 담을 수 있습니다')
-   S.picks = on ? S.picks.filter(y => y !== x) : [...S.picks, x]
-   toast(on ? `${x.full} 뺐습니다` : `${x.full} 담았습니다 (${S.picks.length}/3)`, 1600)
-   return renderFull()
-  }
-  openSheet(x)
+ const at = i => String(i).startsWith('b') ? v.better[+String(i).slice(1)] : v.list[+i]
+ $$('#fullBody .nc-open').forEach(b => b.addEventListener('click', () => openSheet(at(b.dataset.i))))
+ $$('#fullBody .pick').forEach(b => b.addEventListener('click', () => {
+  const x = at(b.dataset.pick), on = S.picks.includes(x)
+  if (!on && S.picks.length >= 3) return toast('견주기는 셋까지 담을 수 있습니다')
+  S.picks = on ? S.picks.filter(y => y !== x) : [...S.picks, x]
+  toast(on ? `${x.full} 뺐습니다` : `${x.full} 담았습니다 (${S.picks.length}/3)`, 1600)
+  // 다시 그리지 않고 단추만 바꾼다 — 보던 자리가 튀지 않게
+  b.setAttribute('aria-pressed', String(!on)); b.textContent = on ? '견주기에 담기' : '견주기에 담음'
+  const cm = $('#cmp'); if (cm) { const ok = S.picks.length >= 2; if (ok) cm.removeAttribute('aria-disabled'); else cm.setAttribute('aria-disabled', 'true'); cm.style.opacity = ok ? '' : '.5' }
  }))
  const cur = $('[data-cur]'); cur && cur.addEventListener('click', () => openSheet(v.current))
  const ag = $('#again'); ag && ag.addEventListener('click', () => { S.page = S.page ? 0 : 1; renderFull(); window.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }) })
- const cm = $('#cmp'); cm && cm.addEventListener('click', () => { if (S.picks.length < 2) return toast('네모 칸을 눌러 이름을 둘 이상 담아 주십시오'); renderCmp(); show('cmp') })
+ const cm = $('#cmp'); cm && cm.addEventListener('click', () => { if (S.picks.length < 2) return toast('‘견주기에 담기’를 눌러 이름을 둘 이상 담아 주십시오'); renderCmp(); show('cmp') })
  const tc = $('#toCert'); tc && tc.addEventListener('click', () => openCert(v.name, 'gam'))
  const tr = $('#toRename'); tr && tr.addEventListener('click', () => prefillRename(S.input))
 }
@@ -426,7 +444,7 @@ let sheetX = null
 function openSheet(x) {
  sheetX = x
  const isTop = x.rank === 1
- $('#sheetBody').innerHTML = `<div class="plate"><img src="img/plate-gold.webp" alt=""><div class="tx"><b>${esc(x.fullHj)}</b><span>${esc(x.full)}</span></div></div>
+ $('#sheetBody').innerHTML = `<div class="plate"><img src="img/plate-gold.webp" alt=""><span class="pseal" aria-hidden="true"></span><div class="tx"><b>${esc(x.fullHj)}</b><span>${esc(x.full)}</span></div></div>
   <div class="score"><b>${x.total}</b><span>점 · ${esc(x.grade)}(${esc(x.gradeKo)})${x.rank ? ` · ${x.rank}위` : ''}</span></div>${sealsFig(x, isTop)}
   ${detailCards(x, S.full.saju)}
   <button class="cta" type="button" id="sheetCert"><img src="img/bd-cert.webp" alt="성명장 받기"></button>`
@@ -447,21 +465,21 @@ function renderCmp() {
  const P = S.picks, n = P.length
  const row = (label, f, best) => {
   const vals = P.map(f), nums = vals.map(v => typeof v === 'number' ? v : null)
-  const mx = best ? Math.max(...nums.filter(v => v != null)) : null
+  const nn = nums.filter(v => v != null), mx = best && nn.length && nn.some(v => v !== nn[0]) ? Math.max(...nn) : null // 모두 같으면 붉게 하지 않는다
   return `<tr><th>${label}</th>${vals.map(v => `<td class="${best && v === mx ? 'best' : ''}">${typeof v === 'number' ? (v % 1 ? v.toFixed(1) : v) : esc(v)}</td>`).join('')}</tr>`
  }
  const C = x => Object.fromEntries(x.checks.map(c => [c.key, c]))
- $('#cmpBody').innerHTML = `<div class="pageh"><h1>나란히 견주기</h1><p>담은 이름 ${n}개 · 붉은 글자가 그 줄에서 가장 높은 쪽입니다</p></div>
+ $('#cmpBody').innerHTML = `<div class="pageh"><h1>나란히 견주기</h1><p>담은 이름 ${n}개 · 붉은 글자가 그 줄에서 앞서는 쪽입니다</p></div>
   <div class="cmp" style="--n:${n}">${P.map(x => cardHTML(x, -1, false)).join('')}</div>
   <div class="cmpt"><table>
    ${row('총점', x => x.total, 1)}${row('등급', x => x.grade)}
    ${['사주', '뿌리', '수리', '음양', '소리', '부름', '뜻', '흔함', '놀림'].map(k => row(C(P[0])[k].title, x => C(x)[k].score, 1)).join('')}
    ${row('원·형·이·정', x => x.sagyeok.map(g => g.n).join(' · '))}
-   ${row('뜻', x => x.chars.map(c => c.k || (c.hun && c.hun[0])).join(' · '))}
+   ${row('담은 뜻', x => x.chars.map(c => c.k || (c.hun && c.hun[0])).join(' · '))}
    ${row('채운 기운', x => x.chars.map(c => ELKO[c.el]).join(' · '))}
   </table></div>
   <p class="mini">견준 이름을 누르면 풀이가 펼쳐집니다.</p>`
- $$('#cmpBody .nc').forEach((b, i) => b.addEventListener('click', () => openSheet(P[i])))
+ $$('#cmpBody .nc-open').forEach((b, i) => b.addEventListener('click', () => openSheet(P[i])))
 }
 
 /* ───────── 성명장 · 감명장 ───────── */

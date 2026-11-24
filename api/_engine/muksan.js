@@ -523,9 +523,13 @@ export function story(ev, s) {
   const ck = Object.fromEntries(ev.checks.map(c => [c.key, c]))
   const ch = ev.chars
   const meanOne = c => c.k ? `‘${c.k}’` : c.hun[0] ? `‘${c.hun[0]}’` : '뜻을 알 수 없는 글자'
-  const nun = c => `${c.h}(${c.ko})${batchim(c.ko) ? '은' : '는'}`
-  if (ch.length === 2) P.push(`${ev.full}(${ev.fullHj}) — ${nun(ch[0])} ${meanOne(ch[0])}, ${nun(ch[1])} ${meanOne(ch[1])}${batchim((ch[1].k || ch[1].hun[0] || '')) ? '을' : '를'} 뜻합니다. ${ck.뜻.join || ''}`)
-  else P.push(`${ev.full}(${ev.fullHj}) — ${ch.map(c => `${nun(c)} ${meanOne(c)}`).join(', ')}를 뜻합니다.`)
+  // 글자마다 훈을 줄이지 않고 다 적는다(밝을 철·쌍길 철) — 손님이 고른 한자를 그대로 알아보게
+  const full1 = c => c.hun.length ? c.hun.map(w => `${w} ${c.ko}`).join('·') : c.ko
+  const nun = c => `${c.h}(${full1(c)})${batchim(c.ko) ? '은' : '는'}`
+  const eun = c => `${c.h}${batchim(c.ko) ? '은' : '는'}`
+  const body = ch.map(c => `${eun(c)} ${c.won}획에 ${ELKO[c.el]} 기운`).join(', ')
+  if (ch.length === 2) P.push(`${ev.full}(${ev.fullHj}) — ${nun(ch[0])} ${meanOne(ch[0])}, ${nun(ch[1])} ${meanOne(ch[1])}${batchim((ch[1].k || ch[1].hun[0] || '')) ? '을' : '를'} 뜻합니다. ${ck.뜻.join || ''} 글자의 몸으로 보면 ${body}을 품었습니다.`)
+  else P.push(`${ev.full}(${ev.fullHj}) — ${ch.map(c => `${nun(c)} ${meanOne(c)}`).join(', ')}${batchim((ch[ch.length - 1].k || ch[ch.length - 1].hun[0] || '')) ? '을' : '를'} 뜻합니다. 글자의 몸으로 보면 ${body}을 품었습니다.`)
   const yongIn = ch.filter(c => c.el === s.yong).length, heeIn = ch.filter(c => c.el === s.hee).length, giIn = ch.filter(c => c.el === s.gi).length
   P.push(`태어난 날로 본 바탕은 ‘${s.dmTxt} ${ELKO[s.dm]}’이고, ${STRONG_TXT[s.strong]}. ${s.lack.length ? s.lack.map(e => ELLACK[e]).join(' ') : s.over.length ? s.over.map(e => ELOVER[e]).join(' ') : '다섯 기운이 모두 들어 있어 크게 기운 곳은 없습니다.'}`)
   if (yongIn) P.push(`이름 ${yongIn === ch.length ? '글자 모두' : '한 글자'}가 이 사주에 가장 필요한 ${ELKO[s.yong]} 기운입니다. ${ELBEN[s.yong]} 이름을 부를 때마다 그 힘이 보태진다고 봅니다.`)
