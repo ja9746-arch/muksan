@@ -10,6 +10,8 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x')
   const m = u.pathname.match(/^\/api\/([a-z]+)$/)
   if (m) {
+    // 없는 창구는 404 — 서버째 죽지 않게
+    if (!fs.existsSync(path.join(root, 'api', m[1] + '.js'))) { res.statusCode = 404; return res.end('{}') }
     api[m[1]] ||= (await import(path.join(root, 'api', m[1] + '.js'))).default
     let raw = ''; for await (const c of req) raw += c
     req.body = raw ? JSON.parse(raw) : undefined

@@ -10,6 +10,8 @@ const SS = { get: k => { try { return JSON.parse(sessionStorage.getItem(k)) } ca
 const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b), credentials: 'same-origin' }).then(r => r.json())
 let toastT = 0
 const toast = (t, ms = 2800) => { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), ms) }
+// 창 높이는 처음 한 번만 잰다 — 스크롤 때 주소창이 숨었다 나타나며 바뀌는 높이를 따라가지 않게
+document.documentElement.style.setProperty('--vh0', innerHeight + 'px')
 const Q = new URLSearchParams(location.search)
 const WANT_TOSS = Q.get('pay') === 'toss'
 const FROM = /^[a-z0-9_-]{1,24}$/i.test(Q.get('from') || '') ? Q.get('from') : ''
@@ -268,11 +270,13 @@ function whenText(o, sj) {
 function renderManse() {
  const sj = S.manse.saju, o = S.input
  $('#manseWhen').textContent = whenText(o, sj)
- const X = [52.7, 63.2, 73.4, 83.6], Y1 = 24.2, Y2 = 50.2, H = 26
- $('#book').innerHTML = `<img src="img/manse-book.webp" alt="萬歲曆" width="1254" height="1254">` + sj.cols.map((c, i) => `
-  <span class="lab" style="left:${X[i]}%">${COLS[i]}주</span>
-  <div class="cell ${i === 1 ? 'dm' : ''}" style="left:${X[i]}%;top:${Y1}%;height:${H}%"><b>${c ? esc(c.s) : '?'}</b><i>${c ? esc(c.sk) + ' ' + ELKO[c.se] : '모름'}</i></div>
-  <div class="cell" style="left:${X[i]}%;top:${Y2}%;height:${H + 1}%"><b>${c ? esc(c.b) : '?'}</b><i>${c ? esc(c.bk) + ' ' + ELKO[c.be] : '모름'}</i></div>`).join('')
+ // 책 그림(manse-book2, 1214×933)의 칸 선을 재서 넣은 자리 — 세로선 636·767·895·1020·1150, 가로선 110·438·780
+ const VX = [52.39, 63.18, 73.72, 84.02, 94.73], HY = [11.84, 46.95, 83.6]
+ const cell = (i, r) => `left:${VX[i]}%;width:${(VX[i + 1] - VX[i]).toFixed(2)}%;top:${HY[r]}%;height:${(HY[r + 1] - HY[r]).toFixed(2)}%`
+ $('#book').innerHTML = `<img src="img/manse-book2.webp" alt="萬歲曆" width="1214" height="933">` + sj.cols.map((c, i) => `
+  <span class="lab" style="left:${VX[i]}%;width:${(VX[i + 1] - VX[i]).toFixed(2)}%">${COLS[i]}주</span>
+  <div class="cell ${i === 1 ? 'dm' : ''}" style="${cell(i, 0)}"><b>${c ? esc(c.s) : '?'}</b><i>${c ? esc(c.sk) + ' ' + ELKO[c.se] : '모름'}</i></div>
+  <div class="cell" style="${cell(i, 1)}"><b>${c ? esc(c.b) : '?'}</b><i>${c ? esc(c.bk) + ' ' + ELKO[c.be] : '모름'}</i></div>`).join('')
  $('#manseCard').innerHTML = `<h2><img src="img/icon-plum.webp" alt="">다섯 기운</h2>${elsHTML(sj)}${sj.lines.map(l => `<p>${esc(l)}</p>`).join('')}<p class="yong"><b>이름이 채울 기운</b> — ${이가(ELKO[sj.yong] + '(' + sj.yong + ')')} 첫째, ${이가(ELKO[sj.hee] + '(' + sj.hee + ')')} 둘째입니다. 이 기운의 한자로 이름을 지으면 사주의 빈자리를 메웁니다.</p><p class="note">날짜는 절기로 달을 가르고, 태어난 시는 서울 기준 30분을 보정해 셉니다(백귀사주 만세력과 같은 셈).</p>`
 }
 
@@ -292,6 +296,8 @@ function priceCard(kind) {
   <button class="cta" type="button" id="payBtn"><img src="img/${btn[0]}.webp" alt="${btn[1]} ${won(PRICE[kind])}원"></button>
   <p class="legal">결제하면 곧바로 풀이가 펼쳐집니다. 디지털 콘텐츠라 펼친 뒤에는 환불이 제한됩니다(전자상거래법 제17조 제2항). 오류로 풀이를 받지 못하면 전액 환불합니다. 결제하면 <a href="#" data-pol="terms">이용약관</a>과 <a href="#" data-pol="refund">환불정책</a>에 동의한 것으로 봅니다.</p></div>`
 }
+const hugiList = `<div class="hugi-slot" data-hugi="list" data-s="묵산" data-title="먼저 받아 본 분들의 말"></div>`
+const hugiWrite = `<div class="hugi-slot" data-hugi="write" data-s="묵산" data-title="묵산작명원의 풀이는 어떠셨습니까" data-desc="별을 누르고 한마디 남겨 주십시오. 다음에 이름을 지으러 오는 분이 읽습니다."></div>`
 const miniLinks = '<p class="mini"><a href="#" data-pol="terms">약관</a>·<a href="#" data-pol="privacy">개인정보</a>·<a href="#" data-pol="refund">환불</a>·<a href="#" data-pol="biz">사업자정보</a></p>'
 function renderFree() {
  const v = S.free, o = S.input, k = v.kind
@@ -302,16 +308,17 @@ function renderFree() {
   <div class="scroll"><img class="rt" src="img/rod-top.webp" alt=""><div class="body"><div class="vname">${[...n.fullHj].map((c, i) => `<div><b>${esc(c)}</b><span>${esc([...n.full][i] || '')}</span></div>`).join('')}</div>
   <p class="grade">총점 <b>?</b> 봉함</p></div><img class="rb" src="img/rod-bot.webp" alt=""></div>
   <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><em aria-label="봉함">封</em></div>` : ckHTML(c)).join('')}<div class="sealed"><img src="img/icon-roots.webp" alt=""><b>이름이 더해진 팔자</b><em aria-label="봉함">封</em></div><div class="sealed"><img src="img/icon-sieve.webp" alt=""><b>바꾼다면 어느 쪽으로</b><em aria-label="봉함">封</em></div></div></div>`
-  h += priceCard('gamjeong') + miniLinks
+  h += hugiList + priceCard('gamjeong') + miniLinks
  } else {
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 열 개를<br>봉해 두었습니다</h1><p>${esc(whenText(o, v.saju))}</p></div>`
   h += sajuCard(v.saju)
   h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">체로 거른 수</h2><div class="sieve">${funnelRows(v.funnel, '남은 이름')}</div><p class="note" style="margin-top:8px">남은 이름 가운데 점수가 높은 열 개를 봉했고, 결제하면 다음 열 개까지 스무 개를 펼칩니다.</p></div>`
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름</h2><p><b style="font-size:20px">${esc(v.current.fullHj)}</b> ${esc(v.current.full)} — 등급 <b style="color:var(--red)">${esc(v.current.grade)}(${esc(v.current.gradeKo)})</b></p><p class="note">어느 잣대에서 깎였는지는 결제 뒤 펼쳐 드립니다.</p></div>`
   h += `<div class="card"><h2><img src="img/seal-empty.webp" alt="">봉한 이름</h2><div class="envs">${v.sealed.map((x, i) => `<div class="env"><img src="img/env.webp" alt=""><div class="l"><b>${ORD[i]} 이름</b>${esc(o.sur)}○○</div><div class="r"><b>${x.total}점</b>${esc(x.grade)}${msealHTML(i === 0 ? ['薦', ...x.seals] : x.seals)}</div></div>`).join('')}</div></div>`
-  h += priceCard(k) + miniLinks
+  h += hugiList + priceCard(k) + miniLinks
  }
  $('#freeBody').innerHTML = h
+ window.Hugi && Hugi.scan()
  $('#payBtn').addEventListener('click', pay)
  payNote()
 }
@@ -364,7 +371,7 @@ function renderFull() {
   if (v.guide) h += guideHTML(v.guide, n)
   if (v.better && v.better.length) h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">같은 소리, 더 나은 한자</h2><p class="note">‘${esc(n.given)}’ 소리는 그대로 두고 한자만 바꾸면 점수가 오르는 짝입니다. 눌러서 자세히 보십시오.</p><div class="names" style="margin:10px 0 0">${v.better.map((x, i) => cardHTML(x, 'b' + i, false)).join('')}</div></div>`
   h += `<button class="cta" type="button" id="toCert" style="margin-top:22px"><span class="dbtn">감명장 받기</span></button>`
-  h += sajuCard(v.saju) + miniLinks
+  h += sajuCard(v.saju) + hugiWrite + miniLinks
  } else {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'} · 이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
@@ -378,9 +385,10 @@ function renderFull() {
   h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} ‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
   h += sajuCard(v.saju)
   if (k === 'rename') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">개명은 이렇게 합니다</h2><p>① 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 냅니다. 새 이름의 한글과 한자를 함께 적고, 바꾸려는 까닭을 밝힙니다.</p><p>② 법원이 허가하면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 신고가 끝나면 주민등록·여권·은행·보험 등의 이름을 차례로 바꿉니다.</p><p class="note">2024년 한 해 개명 허가는 8만 4천여 건이었습니다. 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
-  h += miniLinks
+  h += hugiWrite + miniLinks
  }
  $('#fullBody').innerHTML = h
+ window.Hugi && Hugi.scan()
  bindFull()
 }
 function bindFull() {
