@@ -665,12 +665,19 @@ export function generate(o, s) {
         if (R.count) funnel.이름글자++
         const sg = sagyeok(surWon, [ra.won, rb.won]); if (sg.filter(x => x.gil).length < R.suri) continue
         if (R.count) funnel.수리++
-        const ws = [surWon, ra.won, rb.won]; if (ws.every(w => w % 2) || ws.every(w => !(w % 2))) continue
+        const ws = [surWon, ra.won, rb.won]; if (R.yy !== false && (ws.every(w => w % 2) || ws.every(w => !(w % 2)))) continue
         if (R.count) funnel.음양++
         if (sndBad) continue
         if (R.count) funnel.소리++
-        if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(e => e === s.yong || e === s.hee || e === s.johu)) continue
-        if (surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
+        const good = e => e === s.yong || e === s.hee || e === s.johu
+        if (R.el !== 'free') { if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(good)) continue }
+        else {
+          // 늦춘 차례: 돌림자는 집안이 정한 글자라 기운을 따지지 않고, 나머지 한 자만 본다(꺼리는 기운은 끝까지 뺀다)
+          const fr = o.dolKo ? [o.dolPos === 1 ? rb : ra] : [ra, rb]
+          if (fr.some(r => r.el === s.gi)) continue
+          if (R.needGood && !fr.some(r => good(r.el))) continue
+        }
+        if (R.chain !== false && surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
         if (R.count) funnel.사주++
         const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex, by: o.y }, s)
         if (ev.checks.find(c => c.key === '놀림').score < 6 || ev.checks[0].score < R.saju) continue
@@ -681,15 +688,22 @@ export function generate(o, s) {
       if (top) { best.push(top); have.add(nm) }
     }
   }
-  run(names, { snd: true, suri: 4, saju: 6.5, count: true })
+  // 돌림자면 다른 자리에 이름 소리 전부를 넣어 본다 — 엄한 차례부터 넓게 찾아야 늦춘 이름이 덜 섞인다
+  let more = names
+  if (o.dolKo) {
+    const p = o.dolPos - 1, all = Object.keys(POOLMAP)
+    more = [...names, ...all.map(x => p === 0 ? o.dolKo + x : x + o.dolKo).filter(nm => !teaseList.some(w => nm.includes(w)))]
+  }
+  // 돌림자는 집안이 정한 글자 — 엄한 차례에서도 그 자리의 기운은 따지지 않고, 다른 한 자가 사주를 채우는지를 본다
+  run(more, { snd: true, suri: 4, saju: o.dolKo ? 5 : 6.5, count: true, ...(o.dolKo ? { el: 'free', needGood: true } : {}) })
   funnel.남은이름 = best.length
   if (best.length < 20) {
-    let more = names
-    if (o.dolKo) { // 돌림자면 다른 자리에 이름 소리 전부를 넣어 본다
-      const p = o.dolPos - 1, all = Object.keys(POOLMAP)
-      more = [...names, ...all.map(x => p === 0 ? o.dolKo + x : x + o.dolKo).filter(nm => !teaseList.some(w => nm.includes(w)))]
-    }
     run(more, { snd: false, suri: 3, saju: 5, count: false })
+    /* 돌림자가 이 사주가 꺼리는 기운이거나 성과 획수가 맞지 않으면 위 두 차례로도 0개가 나왔다(400건 중 91건).
+       값을 받고 스무 개를 드리기로 했으니 — 돌림자 자리는 기운을 따지지 않고 나머지 한 자로 사주를 채우는 차례,
+       그래도 모자라면 사격·음양을 점수로만 보는 차례로 채운다. 늦춘 만큼 점수가 낮게 나오고, 화면에 까닭을 적는다 */
+    if (best.length < 20) run(more, { snd: false, suri: 2, saju: 3, count: false, el: 'free', needGood: true, yy: false })
+    if (best.length < 20) run(more, { snd: false, suri: 0, saju: 0, count: false, el: 'free', needGood: false, yy: false, chain: false })
     funnel.늦춤 = best.length - funnel.남은이름
   }
   best.sort((a, b) => b.key - a.key)

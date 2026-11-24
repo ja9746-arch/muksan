@@ -50,6 +50,22 @@ for (const [b, want, label] of MANSE) {
   if (want) ok(P4(b) === want, `만세력 ${label}: ${P4(b)}`)
   else { const s = sajuOf(b); ok(s.solar && s.solar.year === 1995 && s.solar.month === 7 && s.solar.day === 29, `${label}: ${s.solar && [s.solar.year, s.solar.month, s.solar.day].join('-')}`) }
 }
+// 돌림자 — 사주가 꺼리는 기운의 돌림자여도 값을 받은 만큼 스무 개, 돌림자는 늘 제자리에
+{
+  const SUR = [['김', '金'], ['이', '李'], ['박', '朴'], ['최', '崔'], ['정', '鄭'], ['강', '姜'], ['조', '趙'], ['윤', '尹'], ['장', '張'], ['임', '林']]
+  const DOL = [['준', '俊'], ['민', '敏'], ['현', '賢'], ['영', '榮'], ['수', '秀'], ['석', '錫'], ['재', '在'], ['상', '相'], ['종', '鍾'], ['희', '熙'], ['용', '容'], ['동', '東'], ['진', '振'], ['우', '祐'], ['태', '泰'], ['호', '浩'], ['성', '成'], ['기', '基'], ['병', '炳'], ['규', '奎']]
+  let n = 0, few = 0, off = 0, strict0 = 0
+  for (let i = 0; i < 400; i++) {
+    const [sur, surHj] = SUR[i % SUR.length], [dk, dh] = DOL[i % DOL.length]
+    const o = cleanInput({ kind: i % 2 ? 'baby' : 'rename', sur, surHj, sex: i % 3 ? '남' : '여', cal: '양력', y: 1970 + (i * 7) % 56, m: 1 + (i * 5) % 12, d: 1 + (i * 11) % 28, h: i % 4 ? (i * 3) % 24 : null, mi: 0, wish: [], dolKo: dk, dolHj: dh, dolPos: 1 + (i % 2) })
+    const v = fullView(o); n++
+    if (v.list.length !== 20) few++
+    if (v.list.some(x => [...x.givenHj][o.dolPos - 1] !== dh)) off++
+    if (!v.funnel.남은이름) strict0++
+  }
+  ok(few === 0, `돌림자 ${n}건 모두 이름 스무 개 (모자란 것 ${few}건, 엄한 잣대로는 0개였던 것 ${strict0}건도 채움)`)
+  ok(off === 0, `돌림자가 늘 고른 자리에 들어감 (어긋난 것 ${off}건)`)
+}
 // 세기·채울 기운 — 자리 무게(월령 30·일지 20·나머지 10, 일간 제외)와 지장간으로 보는 교과서 꼴
 for (const [b, label, wantS, wantY] of [
   [{ cal: '양력', y: 2026, m: 3, d: 14, h: 9, mi: 0, sex: '남' }, '丁火 卯월, 인성(木)이 넘침 → 재성(金)으로 누름', '강', '金'],
