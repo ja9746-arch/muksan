@@ -171,18 +171,22 @@ a{color:inherit}
 .stage{position:relative;width:260px;height:330px}
 .stage .enso{position:absolute;left:50%;top:0;width:250px;transform:translateX(-50%);opacity:.9;animation:spin 9s linear infinite}
 .stage .yeon{position:absolute;left:50%;bottom:0;width:150px;transform:translateX(-50%);filter:drop-shadow(0 10px 12px rgba(20,15,10,.28))}
-.stage .muk{position:absolute;left:50%;bottom:34px;width:40px;transform-origin:50% 95%;filter:brightness(1.6) contrast(1.05) drop-shadow(3px 6px 5px rgba(20,15,10,.45));animation:rub 1.4s ease-in-out infinite}
+.stage .rip{position:absolute;left:50%;top:148px;width:92px;height:40px;margin:-20px 0 0 -46px;border-radius:50%;border:1.5px solid rgba(236,224,200,.55);transform:scale(.2);opacity:0;animation:rip 2.4s ease-out infinite}
+.stage .rip.b{animation-delay:.8s}
+.stage .rip.c{animation-delay:1.6s}
+@keyframes rip{0%{transform:scale(.15);opacity:0}20%{opacity:.9}100%{transform:scale(1);opacity:0}}
 .stage .blot{position:absolute;left:50%;top:196px;width:250px;mix-blend-mode:multiply;transform:translateX(-50%) scale(.2);opacity:0;animation:bleed 3s ease-out infinite}
 @keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
-@keyframes rub{0%,100%{transform:translate(-80%,0) rotate(-16deg)}50%{transform:translate(-20%,-6px) rotate(-8deg)}}
 @keyframes bleed{0%{opacity:0;transform:translateX(-50%) scale(.4)}35%{opacity:.28}100%{opacity:0;transform:translateX(-50%) scale(1.1)}}
 .say{margin-top:26px;font-size:19px;font-weight:700;min-height:1.8em}
 .say2{margin-top:6px;font-size:14px;color:var(--mute);min-height:1.6em}
 
 /* 결과 공통 */
 .pageh{padding:18px 18px 0;text-align:center}
-.pageh h1{font-size:22px;font-weight:700;line-height:1.5}
+.pageh h1{font-size:22px;font-weight:700;line-height:1.5;letter-spacing:.02em}
+.pageh h1::after{content:"";display:block;width:34px;height:7px;margin:8px auto 2px;background:radial-gradient(circle,var(--red) 0 2.4px,transparent 2.8px) center/10px 7px repeat-x}
 .pageh p{font-size:14.5px;color:var(--ink2);margin-top:4px}
+.pageh h1,.pageh p,.hh,.hsub,.certh,.mini,.join,.hz-tag{text-wrap:balance}
 .card{margin:16px 14px 0;padding:20px 18px;background:#f9f4e8 url(img/hanji.webp) center/320px;border:1px solid rgba(163,132,63,.6);position:relative;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 14px 26px -22px rgba(50,35,20,.6)}
 .card::before{content:"";position:absolute;inset:4px;border:1px solid rgba(163,132,63,.3);pointer-events:none}
 .card::after,.sect::after,.form::after,.hugi-slot[data-hugi=write]::after{content:"";position:absolute;inset:1px;pointer-events:none;--k:rgba(163,132,63,.95);background:linear-gradient(var(--k),var(--k)) 0 0/13px 2px,linear-gradient(var(--k),var(--k)) 0 0/2px 13px,linear-gradient(var(--k),var(--k)) 100% 0/13px 2px,linear-gradient(var(--k),var(--k)) 100% 0/2px 13px,linear-gradient(var(--k),var(--k)) 0 100%/13px 2px,linear-gradient(var(--k),var(--k)) 0 100%/2px 13px,linear-gradient(var(--k),var(--k)) 100% 100%/13px 2px,linear-gradient(var(--k),var(--k)) 100% 100%/2px 13px;background-repeat:no-repeat}
@@ -421,17 +425,21 @@ a{color:inherit}
 .cmp .nc .sc b{font-size:19px}
 .cmp .nc .sq b{font-size:clamp(24px,7.5vw,34px)}
 .cmp table{width:100%;border-collapse:collapse;font-size:13.5px}
-.cmpt{margin:14px 10px 0;background:rgba(255,252,244,.6);border:1px solid var(--line)}
+.cmpt{position:relative;margin:16px 10px 0;background:#f9f4e8 url(img/hanji.webp) center/300px;border:1px solid rgba(163,132,63,.6);box-shadow:0 14px 24px -20px rgba(50,35,20,.6)}
 .cmpt table{width:100%;border-collapse:collapse;font-size:13.5px}
 .cmpt th,.cmpt td{border-bottom:1px solid var(--line);padding:8px 4px;text-align:center}
-.cmpt th{text-align:left;font-weight:700;color:var(--ink2);padding-left:10px;white-space:nowrap}
+.cmpt th{text-align:left;font-weight:700;color:var(--ink2);padding-left:10px;width:28%;line-height:1.35;word-break:keep-all}
+.cmpt td{line-height:1.4;word-break:keep-all}
+.cmpt tr:nth-child(even){background:rgba(163,132,63,.05)}
 .cmpt td.best{color:var(--red);font-weight:700}
 
 /* 성명장 */
 .certw{margin:14px 12px 0;box-shadow:0 8px 24px rgba(40,25,10,.25)}
 .certw img{width:100%}
 .cert-note{text-align:center;font-size:13px;color:var(--mute);margin:10px 18px 0}
-.certh{text-align:center;font-size:20px;font-weight:700;margin-top:22px}
+.certh{text-align:center;font-size:20px;font-weight:700;margin-top:24px;letter-spacing:.04em}
+.certh::after{content:"";display:block;width:34px;height:7px;margin:8px auto 0;background:radial-gradient(circle,var(--red) 0 2.4px,transparent 2.8px) center/10px 7px repeat-x}
+.certh small{margin-top:2px}
 .certh small{display:block;font-size:13px;font-weight:500;color:var(--mute)}
 
 /* 알림 */
@@ -581,7 +589,7 @@ a{color:inherit}
    <img class="enso" src="img/enso.webp" alt="">
    <img class="blot" src="img/blot-3.webp" alt="">
    <img class="yeon" src="img/yeon.webp" alt="">
-   <img class="muk" src="img/muk.webp" alt="">
+   <i class="rip"></i><i class="rip b"></i><i class="rip c"></i>
   </div>
   <p class="say" id="say" role="status">먹을 갈고 있습니다</p>
   <p class="say2" id="say2"></p>

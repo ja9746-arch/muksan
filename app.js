@@ -373,7 +373,7 @@ function renderFull() {
   h += sajuCard(v.saju) + hugiWrite + miniLinks
  } else {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
-  h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'} · 이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
+  h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'}<br>이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
   if (list.some(x => x.relaxed)) h += `<p class="mini" style="margin:12px 18px 0;text-align:left">돌림자 ‘${esc(o.dolKo || '')}’가 성과 소리가 부딪쳐, 엄한 잣대를 다 넘는 이름이 스물이 안 됩니다. 소리 오행을 점수로만 보고 사격 넷 가운데 셋이 길한 이름으로 나머지를 채웠습니다(점수에 그대로 드러납니다).</p>`
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
@@ -484,7 +484,7 @@ function renderCmp() {
   <div class="cmpt"><table>
    ${row('총점', x => x.total, 1)}${row('등급', x => x.grade)}
    ${['사주', '뿌리', '수리', '음양', '소리', '부름', '뜻', '흔함', '놀림'].map(k => row(C(P[0])[k].title, x => C(x)[k].score, 1)).join('')}
-   ${row('원·형·이·정', x => x.sagyeok.map(g => g.n).join(' · '))}
+   ${row('원·형·이·정', x => x.sagyeok.map(g => g.n).join('·'))}
    ${row('담은 뜻', x => x.chars.map(c => c.k || (c.hun && c.hun[0])).join(' · '))}
    ${row('채운 기운', x => x.chars.map(c => ELKO[c.el]).join(' · '))}
   </table></div>
