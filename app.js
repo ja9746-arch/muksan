@@ -100,7 +100,7 @@ const hunFull = (hun, eum) => String(hun || '').split(', ').filter(Boolean).map(
 function picker(box, eum, chosen, onPick, label) {
  return hanjaOf(eum).then(list => {
   const wrap = document.createElement('div')
-  if (!list.length) { wrap.innerHTML = `<p class="pk-h">‘${esc(eum)}’ 소리로 쓸 수 있는 인명용 한자가 없습니다.</p>`; box.appendChild(wrap); return }
+  if (!list.length) { wrap.innerHTML = `<p class="pk-h nohj">‘${esc(eum)}’ 소리로 쓸 수 있는 인명용 한자가 없습니다. ${label === '돌림자' ? '돌림자는 한자가 있는 소리로 넣어 주십시오.' : '한글 이름(순우리말 이름)은 한자 획수와 뿌리 기운으로 재는 감정을 할 수 없습니다.'}</p>`; box.appendChild(wrap); return }
   let full = false
   const draw = () => {
    const L = full ? list : list.slice(0, 16), cx = list.find(x => x.h === chosen())
