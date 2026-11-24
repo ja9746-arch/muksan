@@ -612,6 +612,99 @@ export function story(ev, s) {
   return P
 }
 
+/* ───────── 이 이름을 고르면 좋은 점 · 지금 이름과 견주면 ─────────
+   손님이 '잘 지었구나', '잘 바꿨구나' 하고 알아볼 수 있게, 점수표가 아니라 '무엇이 어떻게 좋아지나'를 말로 짚는다.
+   좋은 점만 늘어놓지 않는다 — 새 이름이 못한 곳은 한 줄로 그대로 적는다 */
+const ELSHORT = { 木: '꾸준히 뻗어 나가는 힘', 火: '자신을 드러내고 알리는 힘', 土: '믿음을 얻고 모아 지키는 힘', 金: '맺고 끊는 결단력', 水: '지혜와 사람을 잇는 힘' }
+const AGE4 = { 元: '어린 시절', 亨: '젊은 날', 利: '한창때', 貞: '평생 전체' }
+const ckOf = ev => Object.fromEntries(ev.checks.map(c => [c.key, c]))
+const elCount = (ev, e) => ev.chars.filter(c => c.el === e).length
+const elList = ev => ev.chars.map(c => `${c.h}(${ELKO[c.el]})`).join('·')
+const howMany = (n, all) => n === all && all > 1 ? '두 글자 모두에' : '한 글자에'
+const joinKeys = ks => ks.length === 2 ? `‘${ks[0]}’${batchim(ks[0]) ? '과' : '와'} ‘${ks[1]}’` : ks.map(k => `‘${k}’`).join(', ')
+const sndLine = ck => { const p = ck.소리.per.운해; return p.seq.map(e => ELKO[e]).join(' → ') }
+
+/** 아기 이름·새 이름 — 이 이름을 고르면 좋은 점. list 는 함께 지은 스무 이름(견줘서 '가장'을 짚는다) */
+export function meritOf(x, s, list = [], o = {}) {
+  const ck = ckOf(x), P = []
+  const all = x.chars.length
+  // ① 사주
+  const ny = elCount(x, s.yong), nh = elCount(x, s.hee), ng = elCount(x, s.gi)
+  if (ny) P.push({ t: `${ELKO[s.yong]} 기운을 채우는 이름`, d: s.raw[s.yong] === 0 ? `사주 ${s.hourKnown ? '여덟' : '여섯'} 글자에 한 글자도 없던 ${ELKO[s.yong]} 기운을 이름 ${howMany(ny, all)} 담았습니다. 비어 있던 자리를 이름이 메워 ${ELSHORT[s.yong]}이 붙습니다.` : `이 사주에 가장 모자란 ${ELKO[s.yong]} 기운을 이름 ${howMany(ny, all)} 담았습니다. 사주에 ${s.raw[s.yong]}개뿐이던 ${ELKO[s.yong]} 기운이 이름을 더하면 ${s.raw[s.yong] + ny}개가 됩니다 — ${ELSHORT[s.yong]}이 붙습니다.` })
+  else if (nh && !ng) P.push({ t: `${ELKO[s.hee]} 기운으로 받치는 이름`, d: `가장 필요한 ${ELKO[s.yong]} 기운을 뒤에서 거드는 ${ELKO[s.hee]} 기운을 담아, 사주가 한쪽으로 기울지 않게 받칩니다.` })
+  // ② 네 시기
+  const g = x.sagyeok
+  if (g.every(v => v.gil)) P.push({ t: '네 시기가 모두 좋은 수', d: `${g.map(v => `${AGE4[v.k]} ${v.n}수 ${v.rd}`).join(', ')} — 획수로 보는 네 시기 운이 하나도 빠짐없이 좋은 수입니다. 평생 전체로는 ‘${g[3].t}’라는 수입니다.` })
+  // ③ 소리
+  if (ck.소리.both) P.push({ t: '부를수록 매끄러운 소리', d: `${x.sur.slice(-1)}·${[...x.given].join('·')} 첫소리 기운이 ${sndLine(ck)}로 이어져, 요즘 작명가가 많이 쓰는 법과 훈민정음 해례본 어느 쪽으로 들어도 서로 부딪치지 않습니다.` })
+  // ④ 뜻
+  if (ck.뜻.baram) P.push({ t: '이름에 담은 바람', d: `${joinKeys(ck.뜻.keys)}${batchim(ck.뜻.keys[ck.뜻.keys.length - 1]) ? '을' : '를'} 담아, 이어 읽으면 ‘${ck.뜻.baram}’이 되라는 이름입니다.` })
+  // ⑤ 고르신 뜻·돌림자
+  const wishName = (o.wish || []).find(w => x.chars.some(c => WISH[w] && WISH[w].includes(c.h)))
+  if (wishName) P.push({ t: `고르신 뜻 ‘${wishName === '큰뜻' ? '큰 뜻' : wishName}’`, d: `${x.chars.filter(c => WISH[wishName].includes(c.h)).map(c => c.h).join('·')} 글자가 고르신 뜻을 그대로 담습니다.` })
+  if (o.dolKo) P.push({ t: '돌림자를 지킨 이름', d: `집안 돌림자 ${o.dolKo}(${o.dolHj})${batchim(o.dolKo) ? '을' : '를'} 그대로 두고, 남은 한 글자를 이 사주에 맞춰 골랐습니다.` })
+  // ⑥ 흔함
+  const r = ck.흔함.rank
+  if (r && o.kind === 'baby') P.push({ t: '요즘 사랑받는 이름', d: `2025년에 태어난 ${o.sex === '여' ? '여자' : '남자'} 아기 이름 ${r.rank}위 — 많은 부모가 고른 만큼 부르기 익숙하고 정겹습니다. 한자까지 같은 이름은 훨씬 드뭅니다.` })
+  else if (o.kind === 'baby') P.push({ t: '겹치지 않는 이름', d: '2025년 출생신고 상위 스물에 없는 이름이라, 같은 반에서 이름이 겹칠 일이 드뭅니다.' })
+  // ⑦ 스무 이름 가운데
+  if (list.length > 3) {
+    const mx = Math.max(...list.map(v => v.total)), top = list.filter(v => v.total === mx).length
+    const ms = Math.max(...list.map(v => ckOf(v).사주.score)), topS = list.filter(v => ckOf(v).사주.score === ms).length
+    if (x.total === mx && top <= 3) P.push({ t: '스무 이름 가운데 으뜸', d: `함께 지은 스무 이름 가운데 총점이 가장 높은 이름입니다(${x.total}점).` })
+    else if (ck.사주.score === ms && topS <= 5) P.push({ t: '사주를 가장 크게 채우는 쪽', d: '함께 지은 스무 이름 가운데 사주 보완 점수가 가장 높은 축에 듭니다.' })
+  }
+  // ⑧ 안심
+  if (ck.인명.score === 10 && ck.놀림.score === 10) P.push({ t: '안심하고 쓰는 이름', d: '모든 글자가 출생신고·개명신고가 되는 대법원 인명용 한자이고, 놀림말로 들리는 소리도 옛 작명서가 피하라던 글자도 없습니다.' })
+  const lead = `${J.을(x.full)} 고르면 좋은 점`
+  return { lead, points: P.slice(0, 7) }
+}
+
+/** 지금 이름(a)과 새 이름(b)을 견준다 — 개명, 그리고 감정의 '같은 소리 더 나은 한자' */
+export function compareNames(a, b, s, adult = true, sameSound = false) {
+  const A = ckOf(a), B = ckOf(b), d = Math.round((b.total - a.total) * 10) / 10
+  const P = []
+  // 사주
+  const ay = elCount(a, s.yong), ag = elCount(a, s.gi), by = elCount(b, s.yong), bh = elCount(b, s.hee), bg = elCount(b, s.gi)
+  if (B.사주.score > A.사주.score) P.push({ w: (B.사주.score - A.사주.score) * 1.6 + 2, t: '사주를 채우는 힘',
+    a: `${elList(a)} — ${ag ? `이 사주가 꺼리는 ${ELKO[s.gi]} 기운이 들어 있습니다` : ay ? `가장 필요한 ${ELKO[s.yong]} 기운이 한 글자뿐입니다` : `가장 필요한 ${ELKO[s.yong]} 기운이 없습니다`}`,
+    b: `${elList(b)} — ${by || bh ? `${by ? `가장 필요한 ${ELKO[s.yong]} 기운을 ${howMany(by, b.chars.length)} 담아 ${ELSHORT[s.yong]}이 붙습니다` : `가장 필요한 기운을 거드는 ${ELKO[s.hee]} 기운을 담았습니다`}${!bg && ag ? `. 꺼리는 ${ELKO[s.gi]} 기운은 빠졌습니다` : ''}` : !bg && ag ? `이 사주가 꺼리는 ${ELKO[s.gi]} 기운이 빠졌습니다` : '사주와 덜 부딪치는 글자로 바꿨습니다'}`,
+    n: `사주 보완 ${A.사주.score} → ${B.사주.score}` })
+  // 네 시기
+  const fixed = b.sagyeok.filter((v, i) => v.gil && !a.sagyeok[i].gil), broke = b.sagyeok.filter((v, i) => !v.gil && a.sagyeok[i].gil)
+  if (fixed.length > broke.length) P.push({ w: (fixed.length - broke.length) * 2.5 + 1, t: '획수로 보는 네 시기 운',
+    a: fixed.map(v => { const o = a.sagyeok.find(x => x.k === v.k); return `${AGE4[v.k]} ${o.n}수 ${o.rd} — ‘${o.t}’` }).join(' / '),
+    b: fixed.map(v => `${AGE4[v.k]} ${v.n}수 ${v.rd} — ‘${v.t}’`).join(' / ') + (b.sagyeok.every(v => v.gil) ? '. 네 시기가 모두 좋은 수가 됩니다' : broke.length ? `. 대신 ${broke.map(v => `${AGE4[v.k]} ${v.n}수 ${v.rd}`).join('·')}${batchim(broke[broke.length - 1].rd) ? '은' : '는'} 나쁜 수가 됩니다` : ''),
+    n: `나쁜 수 ${a.sagyeok.filter(v => !v.gil).length}곳 → ${b.sagyeok.filter(v => !v.gil).length}곳` })
+  // 소리
+  if (B.소리.score > A.소리.score + 0.5) P.push({ w: (B.소리.score - A.소리.score) + 1, t: '부르는 소리의 기운',
+    a: `${sndLine(A)} — ${A.소리.verdict}`, b: `${sndLine(B)} — ${B.소리.verdict}`, n: `소리 오행 ${A.소리.score} → ${B.소리.score}` })
+  // 글자 뿌리
+  if (B.뿌리.score > A.뿌리.score + 0.5 && A.뿌리.verdict !== B.뿌리.verdict) P.push({ w: (B.뿌리.score - A.뿌리.score) * 0.8, t: '글자 뿌리의 흐름', a: A.뿌리.verdict, b: B.뿌리.verdict, n: `글자 뿌리 ${A.뿌리.score} → ${B.뿌리.score}` })
+  // 음양·부름·놀림
+  if (B.음양.score > A.음양.score && A.음양.verdict !== B.음양.verdict) P.push({ w: (B.음양.score - A.음양.score) * 0.6, t: '획수의 음양', a: A.음양.verdict, b: B.음양.verdict, n: `음양 ${A.음양.score} → ${B.음양.score}` })
+  if (B.부름.score > A.부름.score && A.부름.verdict !== B.부름.verdict) P.push({ w: (B.부름.score - A.부름.score) * 0.6, t: '부르는 맛', a: A.부름.verdict, b: B.부름.verdict, n: `부르는 맛 ${A.부름.score} → ${B.부름.score}` })
+  if (B.놀림.score > A.놀림.score) P.push({ w: (B.놀림.score - A.놀림.score) * 0.8, t: '놀림·피하는 글자', a: A.놀림.lines[0], b: '놀림말로 들리는 소리도, 피하라던 글자도 없습니다', n: `놀림 ${A.놀림.score} → ${B.놀림.score}` })
+  if (!adult && B.흔함.score > A.흔함.score) P.push({ w: 0.5, t: '흔한 정도', a: A.흔함.verdict, b: B.흔함.verdict, n: '' })
+  P.sort((x, y) => y.w - x.w)
+  // 뜻 — 두 이름이 담은 바람
+  const ab = A.뜻.baram, bb = B.뜻.baram
+  const mean = bb ? { t: '이름에 담은 뜻', a: ab ? `‘${ab}’` : `‘${A.뜻.keys.join('’·‘')}’`, b: `‘${bb}’이 되라는 이름` } : null
+  // 못한 곳 — 숨기지 않는다
+  const wc = b.checks.filter(c => c.score < A[c.key].score - 0.5 && !(adult && c.key === '흔함'))
+  const same = b.checks.filter(c => c.score === 10 && A[c.key].score === 10 && ['인명', '놀림', '음양', '부름'].includes(c.key)).map(c => c.title)
+  const up = J.으로(b.gradeKo)
+  const lead = sameSound ? `같은 ‘${a.given}’ 소리 그대로, 한자만 바꾸면 ${a.total}점 → ${b.total}점${d > 0 ? `. ${d}점이 오릅니다` : ''}${a.grade !== b.grade ? ` — 등급이 ${a.gradeKo}에서 ${up} 달라집니다` : ''}.`
+    : d >= 15 ? `${a.total}점 → ${b.total}점. ${d}점이 오르고 등급이 ${a.gradeKo}에서 ${up} 올라갑니다. 바꿀 까닭이 분명한 이름입니다.`
+    : d >= 5 ? `${a.total}점 → ${b.total}점. ${d}점이 오릅니다${a.grade !== b.grade ? ` — 등급도 ${a.gradeKo}에서 ${up}` : ''}. 지금 이름에서 아쉬웠던 곳을 메운 이름입니다.`
+    : d > 0 ? `${a.total}점 → ${b.total}점. 점수 차는 크지 않지만, 아래 자리에서 지금 이름보다 앞섭니다.`
+    : `점수는 지금 이름이 ${a.total}점으로 ${-d || ''}${d ? '점 높습니다' : '같습니다'}. 새 이름은 아래 자리에서만 앞섭니다.`
+  return { lead, d, from: { full: a.full, fullHj: a.fullHj, total: a.total, gradeKo: a.gradeKo }, points: P.slice(0, 5).map(({ w, ...x }) => x), mean,
+    worse: wc.length ? `다만 ${wc.map(c => `‘${c.title}’`).join('·')}${batchim(wc[wc.length - 1].title) ? '은' : '는'} 지금 이름이 앞섭니다(${wc.map(c => `${A[c.key].score} → ${c.score}`).join(', ')}).` : '',
+    same: same.length ? `${same.join('·')}${batchim(same[same.length - 1]) ? '은' : '는'} 지금 이름처럼 흠이 없습니다.` : '',
+    rows: b.checks.map(c => ({ title: c.title, a: A[c.key].score, b: c.score })) }
+}
+
 /** 지금 이름을 바꾼다면 어느 쪽으로 — 감정·개명에서 보여 준다 */
 export function renameGuide(o, s, ev) {
   const surWon = [...o.surHj].reduce((a, h) => a + (BY.get(h)?.won || 0), 0)
@@ -806,11 +899,15 @@ export function fullView(o) {
     // 개명 견본 — 같은 사람을 개명으로 지으면 나오는 첫 셋(한자는 감추고 소리와 점수만)
     const g = generate({ ...o, kind: 'rename', given: undefined, givenHj: undefined, wish: [] }, s)
     guide.samples = g.list.slice(0, 3).map(x => ({ full: x.full, total: x.total, grade: x.grade }))
-    return { kind: o.kind, saju: sajuView(s), name: { ...ev, story: story(ev, s), palja: palja(ev, s) }, better: betterHanja(o, s, ev), guide }
+    const adult = o.y < new Date().getFullYear() - 19
+    return { kind: o.kind, saju: sajuView(s), name: { ...ev, story: story(ev, s), palja: palja(ev, s) }, better: betterHanja(o, s, ev).map(x => ({ ...x, story: story(x, s), palja: palja(x, s), vs: compareNames(ev, x, s, adult, true) })), guide }
   }
   const g = generate(o, s)
   const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
   const deco = x => ({ ...x, story: story(x, s), palja: palja(x, s) })
-  return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list.map(deco), current: cur ? { ...deco(cur), guide: renameGuide(o, s, cur) } : null }
+  // 지금 이름을 넣었으면 '지금 이름과 견주면', 아니면 '이 이름을 고르면 좋은 점'
+  const adult = o.y < new Date().getFullYear() - 19
+  const more = x => cur ? { vs: compareNames(cur, x, s, adult) } : { merit: meritOf(x, s, g.list, o) }
+  return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list.map(x => ({ ...deco(x), ...more(x) })), current: cur ? { ...deco(cur), guide: renameGuide(o, s, cur) } : null }
 }
 export const PRODUCTS = ['baby', 'rename', 'gamjeong']
