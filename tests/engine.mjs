@@ -36,5 +36,19 @@ for (let i = 0; i < 400; i++) {
 }
 ok(!short, `400벌 모두 이름 스무 개 — 모자란 벌 ${short}`)
 ok(!fails.length, `지은 이름 ${n}개 모두 사격 넷 길·음양 섞임·인명용·놀림 없음·사주 도움 ${fails.slice(0, 3).join(' / ')}`)
+
+// 만세력 — 독립 달력 계산기(lunar_python)와 3,000벌 맞대 본 뒤 남긴 대표값. 한국만의 셈(30분 보정·서머타임·한국 음력)이 든 곳도 넣는다
+import { sajuOf } from '../api/_engine/muksan.js'
+const P4 = b => { const s = sajuOf(b); return s.cols.slice().reverse().map(c => c ? c.s + c.b : '--').join(' ') }
+const MANSE = [
+  [{ sex: '남', cal: '양력', y: 1991, m: 4, d: 23, h: 22 }, '辛未 壬辰 癸亥 癸亥', '1991-04-23 22시'],
+  [{ sex: '남', cal: '양력', y: 2000, m: 1, d: 1, h: 12 }, '己卯 丙子 戊午 戊午', '2000-01-01 정오(戊午일)'],
+  [{ sex: '남', cal: '양력', y: 1987, m: 7, d: 28, h: 2 }, '丁卯 丁未 戊寅 壬子', '1987 서머타임 — 새벽 2시가 자시(戊일 壬子시)'],
+  [{ sex: '여', cal: '음력', y: 1995, m: 7, d: 2, h: 12 }, null, '한국 음력 1995-07-02 = 양력 1995-07-29'],
+]
+for (const [b, want, label] of MANSE) {
+  if (want) ok(P4(b) === want, `만세력 ${label}: ${P4(b)}`)
+  else { const s = sajuOf(b); ok(s.solar && s.solar.year === 1995 && s.solar.month === 7 && s.solar.day === 29, `${label}: ${s.solar && [s.solar.year, s.solar.month, s.solar.day].join('-')}`) }
+}
 console.log(bad ? `\n틀림 ${bad}` : '\n엔진 시험 모두 통과')
 process.exit(bad ? 1 : 0)

@@ -97,8 +97,8 @@ a{color:inherit}
 .pill.sm{min-width:0;height:38px;padding:0 14px;font-size:15px}
 .chk{display:inline-flex;align-items:center;gap:8px;font-size:15px}
 .chk img{width:28px;height:28px}
-.picker{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.picker button{padding:6px 2px 4px;border:1px solid var(--line);background:rgba(255,252,244,.6);text-align:center;line-height:1.2}
+.picker{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.picker button{min-width:0;overflow:hidden;padding:6px 2px 4px;border:1px solid var(--line);background:rgba(255,252,244,.6);text-align:center;line-height:1.2}
 .picker button b{display:block;font-size:24px;font-weight:700}
 .picker button span{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .picker button[aria-pressed=true]{border-color:var(--red);background:#fff6ec;box-shadow:0 0 0 1px var(--red) inset}
@@ -269,6 +269,24 @@ a{color:inherit}
 .flow .ar span{display:block;font-size:11px;color:var(--mute)}
 .flow-h{font-size:13.5px;color:var(--mute);text-align:center;margin-top:12px}
 
+.story p{font-size:16px;line-height:1.85;margin-top:8px}
+.story p.last{font-weight:700;color:var(--red)}
+.pjrow{display:grid;grid-template-columns:82px repeat(5,minmax(0,1fr));align-items:center;gap:4px;margin-top:8px;text-align:center}
+.pjrow .pjl{font-size:13px;color:var(--ink2);text-align:left}
+.pjrow img{width:38px;height:38px;margin:0 auto;object-fit:contain}
+.pjrow b{display:block;font-size:17px;line-height:1.2}
+.pjrow .need img{filter:drop-shadow(0 0 5px rgba(169,50,34,.55))}
+.pjrow .zero b{color:var(--mute)}
+.guide .v2{font-size:16.5px;font-weight:700;color:var(--red);margin-top:0}
+.exs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}
+.exs span{min-width:0;padding:6px 8px;border:1px solid var(--line);background:rgba(255,253,247,.6);font-size:13px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exs b{font-size:20px;color:var(--ink);margin-right:6px}
+.samples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
+.samples div{padding:10px 4px;border:1px solid rgba(169,50,34,.35);background:#fff8ee;text-align:center;min-width:0}
+.samples b{display:block;font-size:18px}
+.samples span{display:block;font-size:13px;color:var(--red)}
+.samples em{display:block;font-style:normal;font-size:11.5px;color:var(--mute);margin-top:2px}
+
 /* 견주기 */
 .cmp{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px;margin:14px 10px 0}
 .cmp .nc{aspect-ratio:360/703}
@@ -287,7 +305,9 @@ a{color:inherit}
 /* 성명장 */
 .certw{margin:14px 12px 0;box-shadow:0 8px 24px rgba(40,25,10,.25)}
 .certw img{width:100%}
-.cert-note{text-align:center;font-size:13px;color:var(--mute);margin-top:10px}
+.cert-note{text-align:center;font-size:13px;color:var(--mute);margin:10px 18px 0}
+.certh{text-align:center;font-size:20px;font-weight:700;margin-top:22px}
+.certh small{display:block;font-size:13px;font-weight:500;color:var(--mute)}
 
 /* 알림 */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:90;max-width:min(92vw,420px);padding:12px 18px;background:#1e1915;color:#f2e9d8;font-size:14.5px;line-height:1.55;border:1px solid rgba(201,166,90,.5);transition:.25s}
@@ -464,9 +484,13 @@ a{color:inherit}
 <!-- ═══════════ 성명장·감명장 ═══════════ -->
 <section class="scene" id="s-cert" aria-label="성명장">
  <div class="top noprint"><button class="back" type="button" data-back aria-label="이전"><img src="img/ic-back.webp" alt=""></button><span class="brand"><img src="img/logo.webp" alt="묵산작명원"></span><span class="sp"></span></div>
+ <h2 class="certh" id="certH">성명장</h2>
  <div class="certw"><img id="certImg" alt="성명장"></div>
+ <div class="btns noprint"><button type="button" id="certSave"><img src="img/bl-save.webp" alt="성명장 사진으로 저장"></button><button type="button" id="certPrint"><img src="img/bl-print.webp" alt="인쇄하기"></button></div>
+ <h2 class="certh">풀이첩 <small>이 이름의 팔자와 풀이 전부</small></h2>
+ <div class="certw"><img id="bookImg" alt="풀이첩"></div>
+ <div class="btns noprint" style="grid-template-columns:1fr"><button type="button" id="bookSave"><img src="img/bl-save.webp" alt="풀이첩 사진으로 저장" style="max-width:300px;margin:0 auto"></button></div>
  <p class="cert-note noprint">사진으로 저장하면 휴대폰 사진첩에 남습니다. 카카오톡 안 브라우저에서는 그림을 길게 눌러 저장하십시오.</p>
- <div class="btns noprint"><button type="button" id="certSave"><img src="img/bl-save.webp" alt="사진으로 저장"></button><button type="button" id="certPrint"><img src="img/bl-print.webp" alt="인쇄하기"></button></div>
  <button class="cta2 noprint" type="button" data-home><img src="img/bl-home.webp" alt="처음으로"></button>
 </section>
 

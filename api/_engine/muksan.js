@@ -34,11 +34,14 @@ for (const [eum, s] of Object.entries(POOL)) {
 }
 const EUM = new Map()         // 소리 → 글자들(이름에 자주 쓰는 글자 먼저)
 for (const r of BY.values()) for (const e of r.eum) { if (!EUM.has(e)) EUM.set(e, []); EUM.get(e).push(r) }
-for (const [e, list] of EUM) list.sort((a, b) => (POOLKEY.has(b.h) - POOLKEY.has(a.h)) || (a.h.codePointAt(0) > 0xFFFF) - (b.h.codePointAt(0) > 0xFFFF) || a.won - b.won)
+/* 고르는 칸 차례 — 이름에 쓰는 글자 → 흔히 쓰는 글자(한국 표준 한자 4,888자 안) → 나머지, 그 안에서는 획수 적은 순.
+   뜻 자료가 없는 글자(대부분 확장 영역의 드문 글자)는 고르는 칸에 내지 않는다 — 뜻을 모르는 글자로 이름을 짓거나 잴 수 없다 */
+const KS = new Set(JSON.parse(fs.readFileSync(new URL('../_data/ks.json', import.meta.url), 'utf8')))
+for (const [e, list] of EUM) list.sort((a, b) => (POOLKEY.has(b.h) - POOLKEY.has(a.h)) || (KS.has(b.h) - KS.has(a.h)) || a.won - b.won)
 
 /** 한 소리에 쓸 수 있는 인명용 한자(감정·성씨 고르기 화면용) */
 export function hanjaFor(eum, limit = 120) {
-  return (EUM.get(eum) || []).slice(0, limit).map(r => ({ h: r.h, hun: r.hun.join(', '), won: r.won, el: r.el, pool: POOLKEY.has(r.h) }))
+  return (EUM.get(eum) || []).filter(r => r.hun.length).slice(0, limit).map(r => ({ h: r.h, hun: r.hun.join(', '), won: r.won, el: r.el, pool: POOLKEY.has(r.h) }))
 }
 
 /* ───────── 다섯 기운 ───────── */
@@ -55,7 +58,7 @@ function rel(a, b) {
   if (gen(b) === a) return 'genr'     // b 가 a 를 살림
   return 'ctl'                        // 서로 누름(어느 쪽이든)
 }
-const RELKO = { same: '같은 기운', gen: '살려 줌', genr: '살려 줌', ctl: '부딪침' }
+const RELKO = { same: '같은 기운이라 힘이 겹칩니다', gen: '앞 글자가 뒤 글자를 살려 줍니다', genr: '뒤 글자가 앞 글자를 살려 줍니다', ctl: '서로 부딪칩니다' }
 const SK_EL = ['木', '木', '火', '火', '土', '土', '金', '金', '水', '水']
 const BR_EL = ['水', '土', '木', '木', '土', '火', '火', '土', '金', '金', '土', '水']
 
@@ -170,6 +173,7 @@ const SU = `1 太初 1 모든 일의 첫머리라 바탕이 굳고 크게 이룹
 81 還元 1 처음으로 돌아가 다시 크게 일어납니다`.split('\n').map(l => { const [n, nm, g, ...t] = l.split(' '); return { n: +n, nm: nm + '格', gil: g === '1', t: t.join(' ') } })
 const su = n => { let k = n; while (k > 81) k -= 80; return SU[k - 1] }
 const SUKO = { 元: '원격', 亨: '형격', 利: '이격', 貞: '정격' }
+const SUPLAIN = { 元: '어린 시절(태어나 스무 살 무렵)', 亨: '젊은 날(스물부터 마흔 무렵)', 利: '한창때(마흔부터 예순 무렵)', 貞: '평생 전체' }
 const SUAGE = { 元: '초년 — 태어나 스무 살 무렵까지', 亨: '청년 — 스물부터 마흔 무렵', 利: '중년 — 마흔부터 예순 무렵', 貞: '말년 — 평생을 묶는 총운' }
 
 /** 네 격. 성 획수(복성은 합), 이름 글자 획수 배열 */
@@ -342,7 +346,7 @@ export function evaluate(n, s) {
   const gs = ghs.map((h, i) => BY.get(h) || { h, won: 0, el: null, hun: [], eum: [], missing: true })
   const checks = []
   const roleOf = e => e === s.yong ? '용신' : e === s.hee ? '희신' : e === s.gi ? '기신' : (s.johu && e === s.johu) ? '조후' : '한신'
-  const ROLE_TXT = { 용신: '이 사주에 가장 필요한 기운을 바로 채웁니다', 희신: '가장 필요한 기운을 뒤에서 북돋웁니다', 조후: '태어난 계절의 차고 더움을 맞춰 줍니다', 한신: '해도 득도 크지 않은 기운입니다', 기신: '이 사주가 꺼리는 기운이라 오히려 짐이 됩니다' }
+  const ROLE_TXT = { 용신: '이 사주에 가장 필요한 기운(용신)이라 빈자리를 바로 채웁니다', 희신: '가장 필요한 기운을 뒤에서 거들어 주는 기운(희신)입니다', 조후: '태어난 철의 춥고 더움을 맞춰 주는 기운입니다', 한신: '해도 득도 크지 않은 보통 기운입니다', 기신: '이 사주가 꺼리는 기운(기신)이라 오히려 짐이 됩니다' }
 
   // ① 사주 보완
   {
@@ -351,7 +355,8 @@ export function evaluate(n, s) {
     let sc = roles.reduce((a, r) => a + pts[r], 0) / gs.length * 2
     if (gs.length > 1 && roles.includes('용신') && (roles.includes('희신') || roles.filter(r => r === '용신').length > 1)) sc = Math.max(sc, 9.5)
     sc = Math.min(10, Math.round(sc * 10) / 10)
-    const lines = gs.map((g, i) => `${g.h}(${gks[i]}) — 자원오행 ${g.el ? ELKO[g.el] + '(' + g.el + ')' : '알 수 없음'}: ${g.el ? `${roleOf(g.el)}입니다. ${ROLE_TXT[roleOf(g.el)]}.` : ''}`)
+    const lines = gs.map((g, i) => `${g.h}(${gks[i]}) — 글자 뿌리가 ${g.el ? ELKO[g.el] + '(' + g.el + ')' : '알 수 없음'}입니다. ${g.el ? ROLE_TXT[roleOf(g.el)] + '.' : ''}`)
+    lines.push(`글자 뿌리는 한자의 부수(뿌리 글자)로 정합니다. 이 사주는 ${J.이(ELKO[s.yong])} 가장 모자라고, ${ELKO[s.hee]} 기운이 그 뒤를 받칩니다.`)
     const verdict = sc >= 9 ? `사주에 모자란 ${ELKO[s.yong]} 기운을 이름이 정확히 채웁니다.` : sc >= 7 ? `사주를 돕는 기운이 들어 있습니다.` : sc >= 5 ? `사주에 크게 해롭지는 않으나 꼭 필요한 기운은 비어 있습니다.` : `이 사주가 꺼리는 기운이 이름에 들어 있습니다.`
     checks.push({ key: '사주', no: 1, title: '사주 보완', icon: 'plum', score: sc, verdict, lines })
   }
@@ -370,14 +375,15 @@ export function evaluate(n, s) {
   {
     const gil = sg.filter(x => x.gil).length
     const sc = [1, 2.5, 4.5, 7, 10][gil]
-    checks.push({ key: '수리', no: 3, title: '수리 사격', icon: 'rods', score: sc, sagyeok: sg, verdict: gil === 4 ? '원·형·이·정 네 격이 모두 길한 수입니다.' : `네 격 가운데 ${4 - gil}격이 흉한 수입니다.`, lines: sg.map(x => `${x.ko}(${x.k}格) ${x.n}수 ${x.nm} — ${x.gil ? '길' : '흉'}. ${x.t} [${x.age}]`) })
+    checks.push({ key: '수리', no: 3, title: '수리 사격', icon: 'rods', score: sc, sagyeok: sg, verdict: gil === 4 ? '획수로 보는 네 시기 운이 모두 좋은 수입니다.' : `획수로 보는 네 시기 가운데 ${4 - gil}곳이 좋지 않은 수입니다.`,
+      lines: ['이름 글자의 획수를 더해 네 시기의 운을 봅니다(원형이정 사격). 수는 1부터 81까지 좋고 나쁨이 정해져 있습니다.', ...sg.map(x => `${SUPLAIN[x.k]} — ${x.ko} ${x.n}수(${x.nm}) ${x.gil ? '좋음' : '나쁨'}. ${x.t}`)] })
   }
   // ④ 음양
   {
     const all = [...surChars.map(r => r.won), ...gs.map(g => g.won)]
     const odd = all.filter(w => w % 2).length, even = all.length - odd
     const sc = odd && even ? 10 : 2
-    checks.push({ key: '음양', no: 4, title: '음양', icon: 'sunmoon', score: sc, verdict: odd && even ? '홀수(양)와 짝수(음) 획이 섞여 음양이 어울립니다.' : `획수가 모두 ${odd ? '홀수(양)' : '짝수(음)'}라 한쪽으로 몰렸습니다.`, lines: [...surChars.map(r => r.h), ...ghs].map((h, i) => `${h} ${all[i]}획 — ${all[i] % 2 ? '양(홀)' : '음(짝)'}`) })
+    checks.push({ key: '음양', no: 4, title: '음양', icon: 'sunmoon', score: sc, verdict: odd && even ? '홀수(양)와 짝수(음) 획이 섞여 음양이 어울립니다.' : `획수가 모두 ${odd ? '홀수(양)' : '짝수(음)'}라 한쪽으로 몰렸습니다.`, lines: ['획수가 홀수면 양, 짝수면 음으로 봅니다. 성과 이름 글자가 한쪽으로 몰리지 않아야 기운이 고릅니다.', ...[...surChars.map(r => r.h), ...ghs].map((h, i) => `${h} ${all[i]}획 — ${all[i] % 2 ? '양(홀수)' : '음(짝수)'}`)] })
   }
   // ⑤ 소리 오행 — 두 학설
   {
@@ -395,7 +401,7 @@ export function evaluate(n, s) {
     checks.push({
       key: '소리', no: 5, title: '소리 오행', icon: 'bell', score: sc, both, per,
       verdict: both ? '두 학설 어느 쪽으로 들어도 소리가 서로 부딪치지 않습니다.' : per.운해.bad === 0 ? '요즘 작명가 다수가 쓰는 학설로는 부딪침이 없으나, 훈민정음 해례본 학설로는 한 곳이 부딪칩니다.' : per.해례.bad === 0 ? '훈민정음 해례본 학설로는 부딪침이 없으나, 요즘 다수 학설로는 부딪치는 곳이 있습니다.' : '두 학설 모두에서 소리가 부딪치는 곳이 있습니다.',
-      lines: [`요즘 다수 학설(ㅇ·ㅎ을 흙으로): ${show('운해')}`, `훈민정음 해례본(ㅇ·ㅎ을 물로): ${show('해례')}`],
+      lines: ['첫소리(자음)마다 기운이 있습니다. ㅇ·ㅎ을 어디에 두느냐로 보는 법이 둘로 갈려 둘 다 봤습니다.', `요즘 작명가 다수가 쓰는 법(ㅇ·ㅎ은 흙): ${show('운해')}`, `훈민정음 해례본을 따르는 법(ㅇ·ㅎ은 물): ${show('해례')}`],
     })
   }
   // ⑥ 부르는 맛
@@ -429,7 +435,7 @@ export function evaluate(n, s) {
     sc = Math.max(0, Math.round(sc * 10) / 10)
     const ks = gs.map(g => POOLKEY.get(g.h) || (g.hun[0] || '').replace(/(을|ㄹ)$/, ''))
     const join = ks.length === 2 && ks.every(Boolean) ? `‘${ks[0]}’에 ‘${ks[1]}’${batchim(ks[1]) ? '을' : '를'} 더한 이름입니다.` : ks.length === 1 ? `‘${ks[0]}’를 한 글자에 담은 이름입니다.` : ''
-    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.map(w => w + ' ' + gks[i]).join(', ') : '뜻을 찾지 못했습니다'}${!POOLKEY.has(g.h) && badHun(g.hun) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
+    checks.push({ key: '뜻', no: 7, title: '뜻', icon: 'book', score: sc, keys: ks, join, verdict: sc >= 9 ? '두 글자 모두 뜻이 맑고 이름에 오래 써 온 글자입니다.' : sc >= 6 ? '뜻에 흠은 없으나 이름에 흔히 쓰는 글자는 아닙니다.' : '이름에 쓰기에 뜻이 어두운 글자가 있습니다.', lines: [...gs.map((g, i) => `${g.h} — ${g.hun.length ? g.hun.map(w => w + ' ' + gks[i]).join(', ') : '뜻을 찾지 못했습니다'}${POOLKEY.has(g.h) ? ` · 이름에서는 ‘${POOLKEY.get(g.h)}’${batchim(POOLKEY.get(g.h)) ? '을' : '를'} 담습니다` : ''}${!POOLKEY.has(g.h) && badHun(g.hun) ? ' (어두운 뜻이 섞여 있습니다)' : ''}`), ...(join ? [join] : []), ...notes] })
   }
   // ⑧ 인명용 한자
   {
@@ -465,6 +471,106 @@ export function evaluate(n, s) {
   const out = { sur: n.sur, surHj: n.surHj, given: n.given, givenHj: n.givenHj, full: n.sur + n.given, fullHj: n.surHj + n.givenHj, total, grade: g, gradeKo: gk, checks, sagyeok: sg, chars: gs.map((g2, i) => ({ h: g2.h, ko: gks[i], hun: g2.hun, won: g2.won, el: g2.el, k: POOLKEY.get(g2.h) || '' })), surWon: sw }
   out.seals = sealsOf(out)
   return out
+}
+
+/* ───────── 쉬운 풀이 ───────── */
+const ELBEN = {
+  木: '나무 기운은 곧게 자라는 힘입니다. 배우고 뻗어 나가는 일, 새로 시작하는 일, 사람을 키우는 일에 힘이 붙습니다.',
+  火: '불 기운은 드러내는 힘입니다. 말과 표현, 사람 앞에 서는 일, 마음을 쏟는 일에 힘이 붙습니다.',
+  土: '흙 기운은 버티고 품는 힘입니다. 믿음을 얻는 일, 오래 지키는 일, 재물을 모아 두는 일에 힘이 붙습니다.',
+  金: '쇠 기운은 끊고 맺는 힘입니다. 결단과 마무리, 규칙을 세우는 일, 기술을 다루는 일에 힘이 붙습니다.',
+  水: '물 기운은 흐르고 스미는 힘입니다. 지혜와 유연함, 사람 사이를 잇는 일, 공부와 생각에 힘이 붙습니다.',
+}
+const ELLACK = {
+  木: '나무 기운이 비면 시작은 해도 꾸준히 뻗어 나가는 힘이 모자라기 쉽습니다.',
+  火: '불 기운이 비면 속은 깊어도 자신을 드러내고 알리는 힘이 모자라기 쉽습니다.',
+  土: '흙 기운이 비면 생각과 재주는 많아도 한곳에 붙어 지키고 모으는 힘이 모자라기 쉽습니다.',
+  金: '쇠 기운이 비면 마음은 넉넉해도 딱 끊고 정리하는 힘이 모자라기 쉽습니다.',
+  水: '물 기운이 비면 밀고 나가는 힘은 있어도 쉬어 가며 돌아보는 힘이 모자라기 쉽습니다.',
+}
+const ELOVER = {
+  木: '나무 기운이 넘쳐 고집과 앞서가려는 마음이 세기 쉽습니다.',
+  火: '불 기운이 넘쳐 마음이 급하고 쉽게 달아오르기 쉽습니다.',
+  土: '흙 기운이 넘쳐 무겁고 느리며 한번 막히면 오래 묵히기 쉽습니다.',
+  金: '쇠 기운이 넘쳐 날카롭고 남에게 엄격하기 쉽습니다.',
+  水: '물 기운이 넘쳐 생각이 많고 마음이 흔들리기 쉽습니다.',
+}
+const STRONG_TXT = { 강: '그 바탕이 넘칠 만큼 굳센 사주입니다', 약: '그 바탕이 둘레 기운에 눌려 여린 사주입니다', 중: '바탕과 둘레 기운이 고르게 맞서는 사주입니다' }
+
+/** 이름이 더해진 팔자 — 사주 여덟 글자의 다섯 기운에 이름 글자의 뿌리 기운을 더해 본다 */
+export function palja(ev, s) {
+  const before = { ...s.raw }, after = { ...s.raw }
+  for (const c of ev.chars) if (c.el) after[c.el] += 1
+  const lines = []
+  for (const e of EL) {
+    if (after[e] === before[e]) continue
+    if (before[e] === 0) lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 사주에 한 글자도 없던 ${ELKO[e]} 자리를 이름이 채웁니다.`)
+    else if (e === s.yong) lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 가장 필요한 ${ELKO[e]} 기운이 늘어 사주의 빈 곳을 메웁니다.`)
+    else if (e === s.hee) lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 거드는 ${ELKO[e]} 기운이 늘어 필요한 기운을 받칩니다.`)
+    else if (e === s.johu) lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 태어난 철의 춥고 더움을 맞춰 줍니다.`)
+    else if (e === s.gi || s.over.includes(e)) lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 이미 넉넉한 ${ELKO[e]} 기운을 이름이 더 보탭니다. 이 점은 아쉽습니다.`)
+    else lines.push(`${ELKO[e]} 기운 ${before[e]} → ${after[e]}: 보통 기운이라 크게 기울이지 않습니다.`)
+  }
+  const still = EL.filter(e => after[e] === 0)
+  if (still.length) lines.push(`이름을 더해도 ${still.map(e => ELKO[e]).join('·')} 기운은 비어 있습니다. 이 기운은 생활에서 채우면 좋습니다(색·방향·하는 일).`)
+  else lines.push('이름을 더하면 다섯 기운이 하나도 비지 않습니다.')
+  return { before, after, lines }
+}
+
+/** 이름 한눈 풀이 — 어려운 말 없이 대여섯 마디로 */
+export function story(ev, s) {
+  const P = []
+  const ck = Object.fromEntries(ev.checks.map(c => [c.key, c]))
+  const ch = ev.chars
+  const meanOne = c => c.k ? `‘${c.k}’` : c.hun[0] ? `‘${c.hun[0]}’` : '뜻을 알 수 없는 글자'
+  const nun = c => `${c.h}(${c.ko})${batchim(c.ko) ? '은' : '는'}`
+  if (ch.length === 2) P.push(`${ev.full}(${ev.fullHj}) — ${nun(ch[0])} ${meanOne(ch[0])}, ${nun(ch[1])} ${meanOne(ch[1])}${batchim((ch[1].k || ch[1].hun[0] || '')) ? '을' : '를'} 뜻합니다. ${ck.뜻.join || ''}`)
+  else P.push(`${ev.full}(${ev.fullHj}) — ${ch.map(c => `${nun(c)} ${meanOne(c)}`).join(', ')}를 뜻합니다.`)
+  const yongIn = ch.filter(c => c.el === s.yong).length, heeIn = ch.filter(c => c.el === s.hee).length, giIn = ch.filter(c => c.el === s.gi).length
+  P.push(`태어난 날로 본 바탕은 ‘${s.dmTxt} ${ELKO[s.dm]}’이고, ${STRONG_TXT[s.strong]}. ${s.lack.length ? s.lack.map(e => ELLACK[e]).join(' ') : s.over.length ? s.over.map(e => ELOVER[e]).join(' ') : '다섯 기운이 모두 들어 있어 크게 기운 곳은 없습니다.'}`)
+  if (yongIn) P.push(`이름 ${yongIn === ch.length ? '글자 모두' : '한 글자'}가 이 사주에 가장 필요한 ${ELKO[s.yong]} 기운입니다. ${ELBEN[s.yong]} 이름을 부를 때마다 그 힘이 보태진다고 봅니다.`)
+  else if (heeIn) P.push(`이름에 가장 필요한 ${ELKO[s.yong]} 기운은 없지만, 그것을 거드는 ${ELKO[s.hee]} 기운이 들어 있어 간접으로 돕습니다.`)
+  else P.push(`이름 글자에 이 사주가 바라는 ${ELKO[s.yong]}·${ELKO[s.hee]} 기운이 없습니다. ${giIn ? `오히려 꺼리는 ${ELKO[s.gi]} 기운이 들어 있어 이름이 사주를 돕지 못합니다.` : '해롭지는 않으나 이름이 사주를 채워 주지는 못합니다.'}`)
+  const g = ev.sagyeok, bad = g.filter(x => !x.gil)
+  P.push(bad.length ? `획수로 보는 네 시기 가운데 ${bad.map(x => SUPLAIN[x.k]).join(', ')}의 수가 좋지 않습니다 — ${bad[0].t}. ${bad.length < 4 ? `나머지 ${['', '한', '두', '세'][4 - bad.length]} 시기는 좋은 수입니다.` : ''}` : `획수로 보는 네 시기 운이 모두 좋은 수입니다. 어린 시절에는 ‘${g[0].t}’, 평생 전체로는 ‘${g[3].t}’라는 수입니다.`)
+  P.push(ck.소리.both ? '소리 기운은 두 가지 보는 법 모두에서 서로 부딪치지 않아 부르기에도 기운이 매끄럽습니다.' : ck.소리.per.운해.bad === 0 || ck.소리.per.해례.bad === 0 ? '소리 기운은 한 가지 보는 법에서만 부딪침이 있어, 크게 걱정할 정도는 아닙니다.' : '소리 기운이 두 가지 보는 법 모두에서 부딪칩니다. 부를 때 기운이 꺾이는 이름으로 봅니다.')
+  const low = ev.checks.filter(c => c.score < 7).sort((a, b) => a.score - b.score)
+  P.push(low.length ? `아쉬운 곳은 ${low.slice(0, 2).map(c => `‘${c.title}’`).join('과 ')}입니다 — ${low[0].verdict}` : '열 가지 잣대 어디에서도 크게 깎인 곳이 없습니다.')
+  const tot = { 上上: '평생 불러도 좋을 이름입니다.', 上: '좋은 이름입니다. 큰 흠 없이 사주를 받쳐 줍니다.', 中上: '무난한 이름입니다. 다만 사주를 돕는 힘은 크지 않습니다.', 中: '아쉬움이 많은 이름입니다. 고칠 곳이 분명합니다.', 下: '사주와 잘 맞지 않는 이름입니다. 바꾸는 쪽을 생각해 볼 만합니다.' }
+  P.push(`총점 ${ev.total}점(${ev.gradeKo}) — ${tot[ev.grade]}`)
+  return P
+}
+
+/** 지금 이름을 바꾼다면 어느 쪽으로 — 감정·개명에서 보여 준다 */
+export function renameGuide(o, s, ev) {
+  const surWon = [...o.surHj].reduce((a, h) => a + (BY.get(h)?.won || 0), 0)
+  const low = ev.checks.filter(c => c.score < 7).sort((a, b) => a.score - b.score)
+  const should = ev.total < 85 || ev.checks[0].score < 6.5 || ev.checks[2].score < 7
+  const verdict = should
+    ? `바꾸는 쪽을 권합니다. ${low.length ? low.slice(0, 3).map(c => `‘${c.title}’`).join('·') + '에서 깎였습니다.' : '사주를 돕는 힘이 약합니다.'}`
+    : `지금 이름으로도 충분합니다. 그래도 바꾸신다면 아래 방향을 따르면 지금보다 사주에 더 맞는 이름이 됩니다.`
+  const need = [s.yong, s.hee].map(e => ({ el: e, ko: ELKO[e], ex: Object.values(POOLMAP).flat().filter(x => BY.get(x.h)?.el === e).slice(0, 40).filter((x, i, a) => a.findIndex(y => y.h === x.h) === i).slice(0, 8).map(x => ({ h: x.h, k: x.k, eum: BY.get(x.h).eum[0] })) }))
+  // 첫소리 — 성과 부딪치지 않는 무리(두 보는 법 모두)
+  const GROUP = [['ㄱ·ㅋ', '가'], ['ㄴ·ㄷ·ㄹ·ㅌ', '나'], ['ㅁ·ㅂ·ㅍ', '마'], ['ㅅ·ㅈ·ㅊ', '사'], ['ㅇ·ㅎ', '아']]
+  const sur1 = o.sur.slice(-1)
+  const good = GROUP.filter(([, rep]) => ['운해', '해례'].every(sc => rel(soundEl(sur1, sc), soundEl(rep, sc)) !== 'ctl')).map(g => g[0])
+  const badS = GROUP.filter(([g]) => !good.includes(g)).map(g => g[0])
+  // 획수 짝 — 네 격이 모두 길한 이름 두 글자 획수
+  const pairs = []
+  for (let a = 4; a <= 22; a++) for (let b = 4; b <= 22; b++) {
+    const sg = sagyeok(surWon, [a, b]); const ws = [surWon, a, b]
+    if (sg.every(x => x.gil) && !(ws.every(w => w % 2) || ws.every(w => !(w % 2)))) pairs.push([a, b])
+  }
+  const pick = pairs.filter((_, i) => i % Math.max(1, Math.floor(pairs.length / 6)) === 0).slice(0, 6)
+  return {
+    should, verdict,
+    need, good, badS, pairs: pick, avoid: ELKO[s.gi],
+    lines: [
+      `이름 글자 뿌리에 ${ELKO[s.yong]}(${s.yong}) 기운을 첫째로, ${ELKO[s.hee]}(${s.hee}) 기운을 둘째로 담으십시오. ${ELKO[s.gi]}(${s.gi}) 기운 글자는 피하십시오.`,
+      `이름 첫소리는 ${good.length ? good.join(' / ') + ' 쪽이' : '어느 쪽이든'} ${o.sur} 씨와 부딪치지 않습니다.${badS.length ? ` ${badS.join(' / ')} 쪽은 성과 소리가 부딪칩니다.` : ''}`,
+      `성 ${o.surHj}(${surWon}획)에는 이름 두 글자를 ${pick.map(([a, b]) => `${a}획+${b}획`).join(', ')}처럼 맞추면 네 시기 운이 모두 좋은 수가 됩니다.`,
+    ],
+  }
 }
 
 /* ───────── 이름 짓기 ───────── */
@@ -593,10 +699,15 @@ export function fullView(o) {
   const s = sajuOf(birthOf(o)); if (!s) { const e = new Error('BAD_BIRTH'); e.code = 'BAD_BIRTH'; throw e }
   if (o.kind === 'gamjeong') {
     const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s)
-    return { kind: o.kind, saju: sajuView(s), name: ev, better: betterHanja(o, s, ev) }
+    const guide = renameGuide(o, s, ev)
+    // 개명 견본 — 같은 사람을 개명으로 지으면 나오는 첫 셋(한자는 감추고 소리와 점수만)
+    const g = generate({ ...o, kind: 'rename', given: undefined, givenHj: undefined, wish: [] }, s)
+    guide.samples = g.list.slice(0, 3).map(x => ({ full: x.full, total: x.total, grade: x.grade }))
+    return { kind: o.kind, saju: sajuView(s), name: { ...ev, story: story(ev, s), palja: palja(ev, s) }, better: betterHanja(o, s, ev), guide }
   }
   const g = generate(o, s)
   const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
-  return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list, current: cur }
+  const deco = x => ({ ...x, story: story(x, s), palja: palja(x, s) })
+  return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list.map(deco), current: cur ? { ...deco(cur), guide: renameGuide(o, s, cur) } : null }
 }
 export const PRODUCTS = ['baby', 'rename', 'gamjeong']
