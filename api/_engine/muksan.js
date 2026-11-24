@@ -487,44 +487,60 @@ export function generate(o, s) {
     for (const a of f) for (const c of b) { const nm = a + c; if (a !== c && !listed.has(nm) && !other.has(nm) && !teaseList.some(w => nm.includes(w))) names.push(nm) }
   }
   const wish = new Set((o.wish || []).flatMap(w => [...WISH[w]]))
-  const funnel = { 전체: HANJA_COUNT, 이름글자: 0, 수리: 0, 음양: 0, 소리: 0, 사주: 0, 남은이름: 0 }
-  const best = []
+  const funnel = { 전체: HANJA_COUNT, 이름글자: 0, 수리: 0, 음양: 0, 소리: 0, 사주: 0, 남은이름: 0, 늦춤: 0 }
+  const best = [], have = new Set()
   const surWon = [...o.surHj].reduce((a, h) => a + (BY.get(h)?.won || 0), 0)
   const lastSur = [...o.surHj].slice(-1)[0]
   const surEl = BY.get(lastSur)?.el
-  for (const nm of names) {
-    if (seen.has(nm)) continue; seen.add(nm)
-    const [s1, s2] = [...nm]
-    if (s1 === s2) continue
-    const A = o.dolKo && o.dolPos === 1 ? [{ h: o.dolHj }] : POOLMAP[s1] || []
-    const B = o.dolKo && o.dolPos === 2 ? [{ h: o.dolHj }] : POOLMAP[s2] || []
-    if (!A.length || !B.length) continue
-    // 소리는 한자와 상관없다 — 이름마다 한 번만 본다. 두 학설 모두에서 부딪칠 때만 뺀다
-    // (한 학설로만 걸리면 점수에서 덜고 까닭을 적는다 — 학설이 둘로 갈려 있어 한쪽만으로 버리면 지나치다)
-    const badIn = sc => { const e = [o.sur.slice(-1), s1, s2].map(c => soundEl(c, sc)); return rel(e[0], e[1]) === 'ctl' || rel(e[1], e[2]) === 'ctl' }
-    const sndBad = badIn('운해') && badIn('해례')
-    let top = null
-    for (const a of A) for (const b of B) {
-      if (a.h === b.h) continue
-      const ra = BY.get(a.h), rb = BY.get(b.h); if (!ra || !rb) continue
-      if ((sex === '남' && (FEM.has(a.h) || FEM.has(b.h))) || (sex === '여' && (MAS.has(a.h) || MAS.has(b.h)))) continue
-      funnel.이름글자++
-      const sg = sagyeok(surWon, [ra.won, rb.won]); if (!sg.every(x => x.gil)) continue
-      funnel.수리++
-      const ws = [surWon, ra.won, rb.won]; if (ws.every(w => w % 2) || ws.every(w => !(w % 2))) continue
-      funnel.음양++
-      if (sndBad) continue
-      funnel.소리++
-      if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(e => e === s.yong || e === s.hee || e === s.johu)) continue
-      if (surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
-      funnel.사주++
-      const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex, by: o.y }, s)
-      if (ev.checks.find(c => c.key === '놀림').score < 6 || ev.checks[0].score < 6.5) continue
-      const bonus = [a.h, b.h].filter(h => wish.has(h)).length * 3
-      const key = ev.total + bonus - (listed.has(nm) ? 0 : 15) + (hash(o.sur + nm + a.h + b.h + o.y + o.m + o.d) % 100) / 1000
-      if (!top || key > top.key) top = { key, ev, wishHit: bonus > 0, listed: listed.has(nm) }
+  /* 한 차례 거르기. R = 엄한 정도 — 엄한 차례로 스무 개가 안 차면(돌림자가 성과 소리가 부딪치는 집 등)
+     소리는 점수로만 보고, 사격은 넷 중 셋, 사주는 해롭지 않으면 받는 둘째 차례로 채운다 */
+  const run = (list, R) => {
+    const seen = new Set()
+    for (const nm of list) {
+      if (seen.has(nm) || have.has(nm)) continue; seen.add(nm)
+      const [s1, s2] = [...nm]
+      if (s1 === s2) continue
+      const A = o.dolKo && o.dolPos === 1 ? [{ h: o.dolHj }] : POOLMAP[s1] || []
+      const B = o.dolKo && o.dolPos === 2 ? [{ h: o.dolHj }] : POOLMAP[s2] || []
+      if (!A.length || !B.length) continue
+      // 소리는 한자와 상관없다 — 이름마다 한 번만 본다. 두 학설 모두에서 부딪칠 때만 뺀다
+      // (한 학설로만 걸리면 점수에서 덜고 까닭을 적는다 — 학설이 둘로 갈려 있어 한쪽만으로 버리면 지나치다)
+      const badIn = sc => { const e = [o.sur.slice(-1), s1, s2].map(c => soundEl(c, sc)); return rel(e[0], e[1]) === 'ctl' || rel(e[1], e[2]) === 'ctl' }
+      const sndBad = R.snd && badIn('운해') && badIn('해례')
+      let top = null
+      for (const a of A) for (const b of B) {
+        if (a.h === b.h) continue
+        const ra = BY.get(a.h), rb = BY.get(b.h); if (!ra || !rb) continue
+        if ((sex === '남' && (FEM.has(a.h) || FEM.has(b.h))) || (sex === '여' && (MAS.has(a.h) || MAS.has(b.h)))) continue
+        if (R.count) funnel.이름글자++
+        const sg = sagyeok(surWon, [ra.won, rb.won]); if (sg.filter(x => x.gil).length < R.suri) continue
+        if (R.count) funnel.수리++
+        const ws = [surWon, ra.won, rb.won]; if (ws.every(w => w % 2) || ws.every(w => !(w % 2))) continue
+        if (R.count) funnel.음양++
+        if (sndBad) continue
+        if (R.count) funnel.소리++
+        if ([ra.el, rb.el].includes(s.gi) || ![ra.el, rb.el].some(e => e === s.yong || e === s.hee || e === s.johu)) continue
+        if (surEl && (rel(surEl, ra.el) === 'ctl' && rel(ra.el, rb.el) === 'ctl')) continue
+        if (R.count) funnel.사주++
+        const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: nm, givenHj: a.h + b.h, sex, by: o.y }, s)
+        if (ev.checks.find(c => c.key === '놀림').score < 6 || ev.checks[0].score < R.saju) continue
+        const bonus = [a.h, b.h].filter(h => wish.has(h)).length * 3
+        const key = ev.total + bonus - (listed.has(nm) ? 0 : 15) - (R.count ? 0 : 30) + (hash(o.sur + nm + a.h + b.h + o.y + o.m + o.d) % 100) / 1000
+        if (!top || key > top.key) top = { key, ev, wishHit: bonus > 0, listed: listed.has(nm), relaxed: !R.count }
+      }
+      if (top) { best.push(top); have.add(nm) }
     }
-    if (top) best.push(top)
+  }
+  run(names, { snd: true, suri: 4, saju: 6.5, count: true })
+  funnel.남은이름 = best.length
+  if (best.length < 20) {
+    let more = names
+    if (o.dolKo) { // 돌림자면 다른 자리에 이름 소리 전부를 넣어 본다
+      const p = o.dolPos - 1, all = Object.keys(POOLMAP)
+      more = [...names, ...all.map(x => p === 0 ? o.dolKo + x : x + o.dolKo).filter(nm => !teaseList.some(w => nm.includes(w)))]
+    }
+    run(more, { snd: false, suri: 3, saju: 5, count: false })
+    funnel.늦춤 = best.length - funnel.남은이름
   }
   best.sort((a, b) => b.key - a.key)
   // 첫 자가 한 소리로 쏠리지 않게 — 같은 첫 자는 열 개 안에 셋까지만
@@ -532,8 +548,7 @@ export function generate(o, s) {
   for (const x of best) { const f = x.ev.given[0]; if ((first[f] || 0) < 3 && pick.length < 10) { pick.push(x); first[f] = (first[f] || 0) + 1 } else rest.push(x) }
   // 보여 줄 때는 열 개씩 점수 순으로 — 바라는 뜻과 첫 자 고르기는 '어느 이름이 열 안에 드나'에만 쓴다
   const byTotal = (a, b) => b.ev.total - a.ev.total || b.key - a.key
-  const list = [...pick.sort(byTotal), ...rest.slice(0, 20 - pick.length).sort(byTotal)].slice(0, 20).map((x, i) => ({ ...x.ev, rank: i + 1, wishHit: x.wishHit, listed: x.listed }))
-  funnel.남은이름 = best.length
+  const list = [...pick.sort(byTotal), ...rest.slice(0, 20 - pick.length).sort(byTotal)].slice(0, 20).map((x, i) => ({ ...x.ev, rank: i + 1, wishHit: x.wishHit, listed: x.listed, relaxed: x.relaxed }))
   return { list, funnel }
 }
 

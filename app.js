@@ -61,7 +61,7 @@ priceFill()
 const funnelRows = (f, last) => [
  ['인명용 한자', won(f.전체) + '자'], ['이름에 쓰는 글자로 엮은 조합', won(f.이름글자)], ['수리 사격 넷이 모두 길한 것', won(f.수리)],
  ['음양이 어울리는 것', won(f.음양)], ['소리가 부딪치지 않는 것', won(f.소리)], ['사주에 모자란 기운을 채우는 것', won(f.사주)],
-].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('') + `<div class="last"><span>${last}</span><b>${won(f.남은이름)}개</b></div>`
+].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('') + (f.늦춤 ? `<div><span>엄한 잣대를 모두 넘은 이름</span><b>${won(f.남은이름)}개</b></div><div><span>돌림자 때문에 소리를 점수로만 보고 더 찾은 이름</span><b>${won(f.늦춤)}개</b></div><div class="last"><span>${last}</span><b>${won(f.남은이름 + f.늦춤)}개</b></div>` : `<div class="last"><span>${last}</span><b>${won(f.남은이름)}개</b></div>`)
 post('api/name', { input: { kind: 'baby', sex: '남', cal: '양력', y: 2026, m: 3, d: 14, h: 8, mi: 0, sur: '김', surHj: '金' } })
  .then(j => { if (j && j.ok) $('#sieveDemo').innerHTML = funnelRows(j.view.funnel, '남은 이름') }).catch(() => {})
 
@@ -322,6 +322,8 @@ function renderFull() {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'} · 이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
   if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>`
+  if (list.some(x => x.relaxed)) h += `<p class="mini" style="margin:12px 18px 0;text-align:left">돌림자 ‘${esc(o.dolKo || '')}’가 성과 소리가 부딪쳐, 엄한 잣대를 다 넘는 이름이 스물이 안 됩니다. 소리 오행을 점수로만 보고 사격 넷 가운데 셋이 길한 이름으로 나머지를 채웠습니다(점수에 그대로 드러납니다).</p>`
+  if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
   h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j)).join('')}</div>`
   h += `<div class="btns"><button type="button" id="again"><img src="img/bl-again.webp" alt="${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}"></button><button type="button" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true" style="opacity:.5"' : ''}><img src="img/bl-compare.webp" alt="나란히 견주기"></button></div>`
   h += `<p class="mini" style="margin-top:8px">${S.page ? '‘다시 뽑기’를 누르면 앞의 열 개로 돌아갑니다.' : '‘다시 뽑기’를 누르면 다음 열 개를 펼칩니다.'} 네모 칸을 눌러 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
@@ -450,15 +452,15 @@ async function drawCert(x, kind) {
  const rows = kind === 'gam'
   ? [['태어난 날', when], ['사주', pil], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n}`).join(' ') + ' — ' + (x.sagyeok.every(g => g.gil) ? '네 격 모두 길' : `흉한 격 ${x.sagyeok.filter(g => !g.gil).length}`)]]
   : [['태어난 날', when], ['사주', pil], ['채운 기운', `${ELKO[sj.yong]}(${sj.yong}) — ` + x.chars.map(k => `${k.h} ${ELKO[k.el]}`).join(' · ')], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n} ${g.nm.replace('格', '')}`).join(' · ')], ['뜻', (x.checks.find(k => k.key === '뜻').join || '').replace(/ 이름입니다\.$/, ' 이름')], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`]]
- let y = 672; c.textAlign = 'left'
+ let y = kind === 'gam' ? 650 : 672, gapL = kind === 'gam' ? 44 : 50, gapR = kind === 'gam' ? 18 : 26; c.textAlign = 'left'
  for (const [k, val] of rows) {
   c.font = `700 32px ${FF}`; c.fillStyle = '#857a6c'; c.fillText(k, 140, y)
   c.font = `500 35px ${FF}`; c.fillStyle = '#1e1915'
-  const ls = wrapLines(c, val, 590); ls.forEach((l, i) => c.fillText(l, 310, y + i * 50)); y += Math.max(1, ls.length) * 50 + 26
+  const ls = wrapLines(c, val, 590); ls.forEach((l, i) => c.fillText(l, 310, y + i * gapL)); y += Math.max(1, ls.length) * gapL + gapR
  }
  if (kind === 'gam') {
-  y += 10; c.font = `500 31px ${FF}`
-  x.checks.forEach((k, i) => { const col = i % 2, r = Math.floor(i / 2); c.fillStyle = '#1e1915'; c.fillText(`${k.title}`, 140 + col * 385, y + r * 50); c.fillStyle = k.score >= 7 ? '#4f6b3a' : '#a93222'; c.textAlign = 'right'; c.fillText(String(k.score), 495 + col * 385, y + r * 50); c.textAlign = 'left' })
+  y += 14; c.font = `500 30px ${FF}`
+  x.checks.forEach((k, i) => { const col = i % 2, r = Math.floor(i / 2); c.fillStyle = '#1e1915'; c.fillText(`${k.title}`, 140 + col * 385, y + r * 46); c.fillStyle = k.score >= 7 ? '#4f6b3a' : '#a93222'; c.textAlign = 'right'; c.fillText(String(k.score), 495 + col * 385, y + r * 46); c.textAlign = 'left' })
  }
  const t = new Date(), today = `${t.getFullYear()}년 ${t.getMonth() + 1}월 ${t.getDate()}일`
  c.textAlign = 'center'; c.font = `500 30px ${FF}`; c.fillStyle = '#4b433a'; c.fillText(`${today} ${kind === 'gam' ? '재어 드림' : '지어 드림'}`, 512, 1250)
