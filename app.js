@@ -27,8 +27,8 @@ const TEN = [
  ['book', '뜻', '한자 뜻이 맑은가'], ['sieve', '인명용 한자', '출생신고가 되는 글자인가'],
  ['tags', '흔한 정도', '2025년 출생신고 순위'], ['scale', '놀림·피하는 글자', '놀림말·불용문자'],
 ]
-const KIND = { baby: '아기 이름 짓기', rename: '개명할 이름 짓기', gamjeong: '지어 둔 이름 감정', manse: '무료 만세력' }
-let PRICE = { baby: 19900, rename: 29900, gamjeong: 4900 }, HC = 9089, SURN = new Map()
+const KIND = { baby: '아기 이름 짓기', rename: '개명할 이름 짓기', hanja: '한자만 바꾸기', gamjeong: '지어 둔 이름 감정', manse: '무료 만세력' }
+let PRICE = { baby: 19900, rename: 29900, hanja: 14900, gamjeong: 4900 }, HC = 9089, SURN = new Map()
 let PAYCFG = { mode: 'demo', price: PRICE }
 
 /* ───────── 장면 ───────── */
@@ -196,9 +196,10 @@ $('#dol').addEventListener('input', () => {
 function openForm(kind) {
  F.kind = kind; S.kind = kind
  $('#formTitle').textContent = KIND[kind]
- const has = { sur: kind !== 'manse', given: kind === 'gamjeong' || kind === 'rename', dol: kind === 'baby' || kind === 'rename', wish: kind === 'baby' || kind === 'rename' }
+ const has = { sur: kind !== 'manse', given: kind === 'gamjeong' || kind === 'rename' || kind === 'hanja', dol: kind === 'baby' || kind === 'rename', wish: kind === 'baby' || kind === 'rename' }
  $('#f-sur').hidden = !has.sur; $('#f-given').hidden = !has.given; $('#f-dol').hidden = !has.dol; $('#f-wish').hidden = !has.wish
- $('#givenLab').textContent = kind === 'rename' ? '지금 이름 (넣으시면 함께 감정합니다)' : '감정할 이름'
+ $('#givenLab').textContent = kind === 'rename' ? '지금 이름 (넣으시면 함께 감정합니다)' : kind === 'hanja' ? '부르는 이름 (한글은 그대로 둡니다)' : '감정할 이름'
+ $('#givenHint').textContent = kind === 'hanja' ? '지금 쓰는 한자를 글자마다 골라 주십시오. 한자가 없는 한글 이름이면 고르지 않고 넘어가시면 됩니다 — 새로 붙일 한자를 찾아 드립니다.' : '한 글자씩 한자를 골라 주십시오. 이름에 자주 쓰는 글자가 앞에 있습니다.'
  $('#sexLab').textContent = kind === 'baby' ? '아기 성별' : '성별'
  $('#goTxt').textContent = kind === 'manse' ? '만세력 펼치기' : '다음'
  $$('.err').forEach(e => e.textContent = '')
@@ -206,8 +207,8 @@ function openForm(kind) {
 }
 $$('[data-go]').forEach(b => b.addEventListener('click', () => openForm(b.dataset.go)))
 /* 감정에서 개명으로 — 넣었던 값을 의뢰서에 그대로 옮긴다 */
-async function prefillRename(o) {
- openForm('rename')
+async function prefillRename(o, kind = 'rename') {
+ openForm(kind)
  $('#sur').value = o.sur; $('#sur').dispatchEvent(new Event('input'))
  await sleep(260)
  const sb = $(`#surHj .pill[data-v="${o.surHj}"]`); sb && sb.click()
@@ -223,7 +224,7 @@ async function prefillRename(o) {
  F.givenHj = [...(o.givenHj || '')]
  const box = $('#givenPick'); box.innerHTML = ''
  for (let i = 0; i < [...(o.given || '')].length; i++) { const k = i; await picker(box, [...o.given][k], () => F.givenHj[k], h => { F.givenHj[k] = h }, `${k + 1}째 글자`) }
- toast('감정에 넣으신 값을 그대로 옮겼습니다 · 돌림자가 있으면 넣고 ‘다음’을 누르십시오', 3600)
+ toast(kind === 'hanja' ? '감정에 넣으신 값을 그대로 옮겼습니다 · ‘다음’을 누르십시오' : '감정에 넣으신 값을 그대로 옮겼습니다 · 돌림자가 있으면 넣고 ‘다음’을 누르십시오', 3600)
 }
 
 function readForm() {
@@ -236,14 +237,16 @@ function readForm() {
   if (!F.surHj) return err('sur', '성의 한자를 골라 주십시오.')
   o.sur = sur; o.surHj = F.surHj
  }
- if (k === 'gamjeong' || k === 'rename') {
+ if (k === 'gamjeong' || k === 'rename' || k === 'hanja') {
   const g = $('#given').value.trim()
-  if (k === 'gamjeong' && !g) return err('given', '감정할 이름을 적어 주십시오.')
+  if ((k === 'gamjeong' || k === 'hanja') && !g) return err('given', k === 'hanja' ? '부르는 이름을 한글로 적어 주십시오.' : '감정할 이름을 적어 주십시오.')
   if (g) {
    if (!isHangul(g) || g.length > 3) return err('given', '이름은 한글 세 자까지 적어 주십시오.')
    const hj = [...g].map((_, i) => F.givenHj[i])
-   if (hj.some(x => !x)) return err('given', '이름 글자마다 한자를 골라 주십시오.')
-   o.given = g; o.givenHj = hj.join('')
+   // 한자만 바꾸기는 지금 한자를 모두 고르거나 하나도 안 고르거나(한글 이름에 한자를 새로 붙이는 경우)
+   if (k === 'hanja' && hj.every(x => !x)) o.given = g
+   else if (hj.some(x => !x)) return err('given', k === 'hanja' ? '지금 한자를 글자마다 모두 고르거나, 한자가 없는 이름이면 모두 비워 두십시오.' : '이름 글자마다 한자를 골라 주십시오.')
+   else { o.given = g; o.givenHj = hj.join('') }
   }
  }
  if (!F.sex) return err('sex', '성별을 골라 주십시오.')
@@ -299,7 +302,7 @@ function stepsFor(kind, paid, o) {
   ['소리를 두 학설로 듣습니다', '요즘 다수 학설과 훈민정음 해례본', null],
   ['열 가지 잣대로 잽니다', '사주·뿌리·수리·음양·소리·부름·뜻·인명·흔함·놀림', null]]
  if (kind === 'hanja') return [S1, S2, S3,
-  ['같은 소리의 인명용 한자를 모읍니다', `‘${o.given}’ 소리로 읽히는 글자만`, v => FN(v).소리별 && Object.entries(FN(v).소리별).map(([k, n]) => `${k} ${nf(n)}자`).join(' · ')],
+  ['같은 소리의 이름 글자를 모읍니다', `‘${o.given}’ 소리로 읽히고 뜻이 맑은 글자만`, v => FN(v).소리별 && Object.entries(FN(v).소리별).map(([k, n]) => `${k} ${nf(n)}자`).join(' · ')],
   ['한자 짝을 맞춥니다', '글자마다 뜻과 뿌리 기운을 봅니다', v => FN(v).짝 != null && `${nf(FN(v).짝)}가지 짝`],
   ['네 시기의 수를 맞춥니다', '원형이정 — 81수 가운데 길한 수', v => FN(v).수리 != null && `${nf(FN(v).짝)} → ${nf(FN(v).수리)}`],
   ['사주와 맞춰 봅니다', '채울 기운을 담고 꺼리는 기운은 뺍니다', v => FN(v).사주 != null && `${nf(FN(v).수리)} → ${nf(FN(v).사주)}`],
@@ -367,8 +370,8 @@ function elsHTML(sj, mark = true) {
 function sajuCard(sj, title = '타고난 사주') {
  return `<div class="card"><h2><img src="img/icon-plum.webp" alt="">${title}</h2>${pillarsHTML(sj)}${elsHTML(sj)}<div class="rd">${(sj.lines || []).map(l => `<p>${hl(l)}</p>`).join('')}</div></div>`
 }
-function whenText(o, sj) {
- const t = o.h == null ? '태어난 시 모름' : o.siLabel ? o.siLabel : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
+function whenText(o, sj, short) {
+ const t = o.h == null ? '태어난 시 모름' : o.siLabel ? (short ? o.si : o.siLabel) : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
  const sol = sj.solar && o.cal !== '양력' ? ` (양력 ${sj.solar.year}.${sj.solar.month}.${sj.solar.day})` : ''
  return `${o.cal === '양력' ? '양력' : o.cal === '윤달' ? '음력 윤달' : '음력'} ${o.y}년 ${o.m}월 ${o.d}일 ${t}${sol} · ${o.sex === '남' ? '남자' : '여자'}`
 }
@@ -393,9 +396,10 @@ function priceCard(kind) {
  const items = {
   baby: ['봉한 이름 열 개와 다음 열 개 — 모두 스무 개', '이름마다 쉬운 말 한눈 풀이와 열 잣대 풀이', '이름이 더해진 팔자 — 이름이 사주의 빈자리를 어떻게 메우나', '마음에 드는 이름 셋까지 나란히 견주기', '고른 이름의 성명장과 풀이첩 — 사진 저장·인쇄'],
   rename: ['새 이름 스무 개와 이름마다 쉬운 말 한눈 풀이·열 잣대 풀이', '지금 이름 감정과 바꿀 방향(넣으신 경우)', '이름이 더해진 팔자 — 새 이름이 사주를 어떻게 채우나', '개명 허가 신청과 신고 순서 안내', '고른 이름의 성명장과 풀이첩 — 사진 저장·인쇄'],
+  hanja: ['같은 소리로 쓸 수 있는 한자 짝 — 점수 순으로 스물까지', '짝마다 지금 한자와 자리마다 견줌(넣으신 경우) 또는 고르면 좋은 점', '짝마다 쉬운 말 한눈 풀이·열 잣대 풀이·이름이 더해진 팔자', '한자만 바꿀 때의 개명 허가·신고 순서 안내', '고른 한자의 성명장과 풀이첩 — 사진 저장·인쇄'],
   gamjeong: ['봉한 일곱 잣대 풀이와 총점·등급, 쉬운 말 한눈 풀이', '이름이 더해진 팔자 — 사주에 이름을 더하면 다섯 기운이 어떻게 바뀌나', '바꾼다면 어느 쪽으로 — 담을 기운·첫소리·획수와 개명 견본 이름 셋', '같은 소리로 점수가 더 높은 한자', '감명장과 풀이첩 — 사진 저장·인쇄'],
  }[kind]
- const btn = kind === 'gamjeong' ? '감정 받기' : '결제하고 이름 받기'
+ const btn = kind === 'gamjeong' ? '감정 받기' : kind === 'hanja' ? '결제하고 한자 받기' : '결제하고 이름 받기'
  return `<div class="price"><h2>${KIND[kind]}</h2><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul>
   <div class="won">${won(PRICE[kind])}<small>원</small></div><span class="paynote" id="paynote" hidden></span>
   <button class="cta" type="button" id="payBtn" aria-label="${btn} ${won(PRICE[kind])}원">${btn}</button>
@@ -414,6 +418,20 @@ function renderFree() {
   <p class="grade">총점 <b>?</b> 봉함</p></div><img class="rb" src="img/rod-bot.webp" alt=""></div>
   <div class="card"><h2><img src="img/icon-scale.webp" alt="">열 가지 잣대</h2><p class="note" style="margin-top:-4px">셋은 먼저 펼쳐 드리고, 일곱은 봉해 두었습니다.</p><div class="chk10">${v.checks.map(c => c.sealed ? `<div class="sealed"><img src="img/icon-${c.icon}.webp" alt=""><b><small>${c.no}</small>${esc(c.title)}</b><em aria-label="봉함">封</em></div>` : ckHTML(c)).join('')}<div class="sealed"><img src="img/icon-roots.webp" alt=""><b>이름이 더해진 팔자</b><em aria-label="봉함">封</em></div><div class="sealed"><img src="img/icon-sieve.webp" alt=""><b>바꾼다면 어느 쪽으로</b><em aria-label="봉함">封</em></div></div></div>`
   h += hugiList + priceCard('gamjeong') + miniLinks
+ } else if (k === 'hanja') {
+  const f = v.funnel, n = v.count
+  h += `<div class="pageh"><h1>${esc(o.sur)}${esc(o.given)} — 한자만 바꾸기</h1><p>${esc(whenText(o, v.saju))}</p></div>`
+  h += sajuCard(v.saju)
+  h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">같은 소리로 잰 한자 짝</h2><div class="sieve">${Object.entries(f.소리별).map(([c, x]) => `<div class="sv"><span>‘${esc(c)}’ 소리로 읽히는 이름 글자</span><b>${won(x)}자</b></div>`).join('')}<div class="sv"><span>엮어 잰 짝</span><b>${won(f.짝)}가지</b></div><div class="sv"><span>네 시기 수가 모두 길한 짝</span><b>${won(f.수리)}가지</b></div><div class="sv last"><span>${v.current ? '지금 한자보다 점수가 높은 짝' : '드릴 짝'}</span><b>${won(v.current ? f.나은짝 : n)}가지</b></div></div>
+   <p class="note" style="margin-top:8px">${!n ? '' : v.current ? `지금 한자보다 점수가 높은 짝을 점수 순으로 ${n === 20 && f.나은짝 > 20 ? '스물까지' : `${n}가지 모두`} 펼쳐 드립니다. ` : `점수 높은 짝을 ${n}가지 펼쳐 드립니다. `}뜻이 어둡거나 이름에 쓰지 않는 글자는 처음부터 넣지 않았습니다.</p></div>`
+  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 한자</h2><p><b style="font-size:20px">${esc(v.current.fullHj)}</b> ${esc(v.current.full)} — 등급 <b style="color:var(--red)">${esc(v.current.grade)}(${esc(v.current.gradeKo)})</b></p><p class="note">어느 잣대에서 깎였고 새 한자로 무엇이 달라지는지는 결제 뒤 자리마다 견줘 드립니다.</p></div>`
+  if (!n) {
+   h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">${v.current ? '지금 한자가 이 소리로는 가장 좋은 축입니다' : '드릴 짝을 찾지 못했습니다'}</h2><p>${v.current ? `‘${esc(o.given)}’ 소리로 읽히는 이름 글자를 모두 엮어 쟀지만 지금 한자보다 점수가 높은 짝이 없습니다. 한자만 바꾸실 까닭이 크지 않아 결제를 받지 않습니다.` : `‘${esc(o.given)}’ 소리에는 이름에 쓰는 한자가 없어 짝을 지어 드릴 수 없습니다. 결제를 받지 않습니다.`}</p><p class="note">지금 이름을 열 가지 잣대로 자세히 보시려면 ‘지어 둔 이름 감정’을, 소리까지 새로 지으시려면 ‘개명할 이름 짓기’를 이용해 주십시오.</p></div>`
+   h += miniLinks
+  } else {
+   h += `<div class="card"><h2><img src="img/seal-empty.webp" alt="">봉한 짝</h2><div class="envs">${v.sealed.map((x, i) => `<div class="env"><img src="img/env.webp" alt=""><div class="l"><b>${ORD[i]} 짝</b>${esc(o.sur)}${esc(o.given)} · 封</div><div class="r"><b>${x.total}점</b>${esc(x.grade)}${msealHTML(i === 0 ? ['薦', ...x.seals] : x.seals)}</div></div>`).join('')}</div></div>`
+   h += hugiList + priceCard('hanja') + miniLinks
+  }
  } else {
   h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 열 개를<br>봉해 두었습니다</h1><p>${esc(whenText(o, v.saju))}</p></div>`
   h += sajuCard(v.saju)
@@ -424,7 +442,7 @@ function renderFree() {
  }
  $('#freeBody').innerHTML = h
  window.Hugi && Hugi.scan()
- $('#payBtn').addEventListener('click', pay)
+ $('#payBtn') && $('#payBtn').addEventListener('click', pay)
  payNote()
 }
 
@@ -491,20 +509,23 @@ function renderFull() {
   <p class="grade">총점 <b>${n.total}</b>점 · ${esc(n.grade)}(${esc(n.gradeKo)})</p>${sealsFig(n)}</div><img class="rb" src="img/rod-bot.webp" alt=""></div>`
   h += detailCards(n, v.saju)
   if (v.guide) h += guideHTML(v.guide, n)
-  if (v.better && v.better.length) h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">같은 소리, 더 나은 한자</h2><p class="note">‘${esc(n.given)}’ 소리는 그대로 두고 한자만 바꾸면 점수가 오르는 짝입니다. 눌러서 자세히 보십시오.</p><div class="names" style="margin:10px 0 0">${v.better.map((x, i) => cardHTML(x, 'b' + i, false)).join('')}</div></div>`
+  if (v.better && v.better.length) h += `<div class="card"><h2><img src="img/icon-book.webp" alt="">같은 소리, 더 나은 한자</h2><p class="note">‘${esc(n.given)}’ 소리는 그대로 두고 한자만 바꾸면 점수가 오르는 짝입니다. 눌러서 자세히 보십시오.</p><div class="names" style="margin:10px 0 0">${v.better.map((x, i) => cardHTML(x, 'b' + i, false)).join('')}</div><p class="note" style="margin-top:12px">이름 글자로 쓸 수 있는 짝을 모두 엮어 점수 순으로 보시려면 ‘한자만 바꾸기’에서 펼칩니다. 넣으신 값을 그대로 옮겨 드립니다.</p><button class="lbtn" type="button" id="toHanja" style="margin-top:8px">한자만 바꾸기 — 짝 모두 보기 <small data-price="hanja">${won(PRICE.hanja)}원</small></button></div>`
   h += `<button class="cta" type="button" id="toCert" style="margin-top:22px">감명장 받기</button>`
   h += sajuCard(v.saju) + hugiWrite + miniLinks
  } else {
   const list = v.list, page = list.slice(S.page * 10, S.page * 10 + 10)
-  h += `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'}<br>이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
-  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">지금 이름 — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><p class="note">새 이름을 누르면 ‘지금 이름과 견주면’에 무엇이 어떻게 달라지는지 자리마다 적어 두었습니다.</p><button type="button" class="more" data-cur>지금 이름 자세히 보기</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
+  const many = list.length > 10
+  h += k === 'hanja' ? `<div class="pageh"><h1>${esc(o.sur)}${esc(o.given)} — 한자 짝 ${list.length}가지</h1><p>${many ? (S.page ? '열하나째부터 끝까지<br>' : '첫째부터 열째까지<br>') : ''}짝을 누르면 ${v.current ? '지금 한자와 견준 풀이가' : '열 잣대 풀이가'} 펼쳐집니다</p></div>`
+   : `<div class="pageh"><h1>${esc(o.sur)}씨 ${k === 'baby' ? '아기' : '새'} 이름 스무 개</h1><p>${S.page ? '열하나째부터 스무째까지' : '첫째부터 열째까지'}<br>이름을 누르면 열 잣대 풀이가 펼쳐집니다</p></div>`
+  if (v.current) h += `<div class="card"><h2><img src="img/icon-tags.webp" alt="">${k === 'hanja' ? '지금 한자' : '지금 이름'} — ${esc(v.current.fullHj)} ${esc(v.current.full)}</h2><p>총점 <b style="color:var(--red);font-size:20px">${v.current.total}</b>점 · ${esc(v.current.grade)}(${esc(v.current.gradeKo)})</p><p class="note">가장 많이 깎인 잣대: ${esc(v.current.checks.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.title + ' ' + c.score).join(' · '))}</p><p class="note">${k === 'hanja' ? '새 한자를 누르면 ‘지금 한자와 견주면’에' : '새 이름을 누르면 ‘지금 이름과 견주면’에'} 무엇이 어떻게 달라지는지 자리마다 적어 두었습니다.</p><button type="button" class="more" data-cur>${k === 'hanja' ? '지금 한자 자세히 보기' : '지금 이름 자세히 보기'}</button></div>` + (v.current.guide ? guideHTML(v.current.guide, v.current, false) : '')
   if (!list.length) h += `<div class="card"><p>넣으신 돌림자로는 쓸 만한 이름을 찾지 못했습니다. 돌림자 자리(앞·뒤)를 바꾸거나 돌림자 없이 다시 지어 보십시오. 결제한 풀이는 이 기기에서 30일 동안 다시 열립니다.</p></div>`
   // 1위가 한 줄을 다 쓰면 나머지가 홀수 — 끝 장도 넓게 펴서 외톨이 칸을 없앤다
   const hasFeat = page.some(x => x.rank === 1), oddTail = hasFeat && (page.length - 1) % 2 === 1
   h += `<div class="names">${page.map((x, j) => cardHTML(x, S.page * 10 + j, true, x.rank === 1, oddTail && j === page.length - 1)).join('')}</div>`
-  h += `<div class="btns"><button type="button" class="lbtn" id="again">${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}</button><button type="button" class="lbtn" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true"' : ''}>나란히 견주기</button></div>`
+  h += `<div class="btns">${many || k !== 'hanja' ? `<button type="button" class="lbtn" id="again">${S.page ? '앞의 열 개 보기' : '다음 열 개 보기'}</button>` : ''}<button type="button" class="lbtn" id="cmp"${S.picks.length < 2 ? ' aria-disabled="true"' : ''}>나란히 견주기</button></div>`
   h += `<p class="mini" style="margin-top:8px">‘견주기에 담기’로 둘이나 셋을 담으면 나란히 견줄 수 있습니다.</p>`
   h += sajuCard(v.saju)
+  if (k === 'hanja') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">한자만 바꿀 때도 개명입니다</h2><p>① 한글은 그대로 두고 한자만 바꿔도 가족관계등록부의 이름이 바뀌는 것이라 법원의 개명허가가 필요합니다. 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 내고, 한글은 그대로이며 한자만 바꾼다고 적습니다.</p><p>② 허가가 나면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 이름이 바뀌어도 주민등록번호는 그대로입니다. 신분증·통장 등의 한자 표기를 차례로 고칩니다.</p><p class="note">한자만 바꾸는 신청은 한글 이름을 바꾸는 신청보다 대체로 수월하게 허가되는 편이라고 알려져 있으나, 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
   if (k === 'rename') h += `<div class="card"><h2><img src="img/icon-sieve.webp" alt="">개명은 이렇게 합니다</h2><p>① 주소지를 맡은 가정법원(지원)에 개명허가 신청서를 냅니다. 새 이름의 한글과 한자를 함께 적고, 바꾸려는 까닭을 밝힙니다.</p><p>② 법원이 허가하면 허가서 등본을 받은 날부터 한 달 안에 시·구·읍·면 사무소에 개명신고를 합니다.</p><p>③ 신고가 끝나면 주민등록·여권·은행·보험 등의 이름을 차례로 바꿉니다.</p><p class="note">2024년 한 해 개명 허가는 8만 4천여 건이었습니다. 허가 여부와 걸리는 기간은 법원이 정합니다.</p></div>`
   h += hugiWrite + miniLinks
  }
@@ -530,6 +551,7 @@ function bindFull() {
  const cm = $('#cmp'); cm && cm.addEventListener('click', () => { if (S.picks.length < 2) return toast('‘견주기에 담기’를 눌러 이름을 둘 이상 담아 주십시오'); renderCmp(); show('cmp') })
  const tc = $('#toCert'); tc && tc.addEventListener('click', () => openCert(v.name, 'gam'))
  const tr = $('#toRename'); tr && tr.addEventListener('click', () => prefillRename(S.input))
+ const th = $('#toHanja'); th && th.addEventListener('click', () => prefillRename(S.input, 'hanja'))
 }
 function sealsFig(x, top) {
  const s = top ? ['薦', ...x.seals] : x.seals
@@ -585,7 +607,7 @@ function meritHTML(x) {
 }
 function vsHTML(x) {
  const v = x.vs; if (!v) return ''
- const same = S.full && S.full.kind === 'gamjeong'
+ const same = S.full && (S.full.kind === 'gamjeong' || S.full.kind === 'hanja')
  const col = (cls, lab, hj, ko, t) => `<div class="${cls}"><small>${lab}</small><b class="n${[...hj].length}">${esc(hj)}</b><span>${esc(ko)}</span><em><i>${t}</i>점</em></div>`
  const pt = p => `<section class="vp"><h3><span>${esc(p.t)}</span>${p.n ? `<small>${esc(p.n)}</small>` : ''}</h3><div class="vr was"><i>지금</i><p>${hl(p.a)}</p></div><div class="vr now"><i>${same ? '새 한자' : '새 이름'}</i><p>${hl(p.b)}</p></div></section>`
  const up = r => r.b > r.a ? 'up' : r.b < r.a ? 'dn' : ''
@@ -662,7 +684,7 @@ async function drawCert(x, kind) {
  c.font = `700 148px ${FF}`; hj.forEach((ch, i) => c.fillText(ch, 512 + (i - (hj.length - 1) / 2) * gap, 440))
  c.font = `700 52px ${FF}`; c.fillStyle = '#4b433a'; ko.forEach((ch, i) => c.fillText(ch, 512 + (i - (ko.length - 1) / 2) * gap, 530))
  c.strokeStyle = 'rgba(169,50,34,.7)'; c.lineWidth = 2; c.beginPath(); c.moveTo(200, 580); c.lineTo(824, 580); c.stroke()
- const when = whenText(o, sj).replace(/ · (남자|여자)$/, '')
+ const when = whenText(o, sj, true).replace(/ · (남자|여자)$/, '')
  const pil = sj.cols.slice().reverse().map((p, i) => p ? p.s + p.b + ['年', '月', '日', '時'][i] : '').filter(Boolean).join(' ')
  const rows = kind === 'gam'
   ? [['태어난 날', when], ['사주', pil], ['총점', `${x.total}점 · ${x.grade}(${x.gradeKo})`], ['원형이정', x.sagyeok.map(g => `${g.k}${g.n}`).join(' ') + ' — ' + (x.sagyeok.every(g => g.gil) ? '네 격 모두 길' : `흉한 격 ${x.sagyeok.filter(g => !g.gil).length}`)]]
@@ -706,7 +728,7 @@ async function drawBook(x, kind) {
  // 지금 이름과 견주면 / 이 이름을 고르면 좋은 점 — 풀이첩 맨 앞에. 왜 이 이름인지부터
  const sub = (t, n) => { c.textAlign = 'left'; c.font = `700 28px ${FF}`; c.fillStyle = '#a93222'; c.fillText(`◆ ${t}`, L, y); if (n) { c.textAlign = 'right'; c.fillStyle = '#4b433a'; c.font = `700 26px ${FF}`; c.fillText(n, R, y) } y += 52 }
  if (x.vs) {
-  const v = x.vs, sm = kind === 'gam' || S.full.kind === 'gamjeong'
+  const v = x.vs, sm = kind === 'gam' || S.full.kind === 'gamjeong' || S.full.kind === 'hanja'
   head(sm ? '지금 한자와 견주면' : '지금 이름과 견주면')
   c.textAlign = 'center'; c.font = `700 56px ${FF}`; c.fillStyle = '#857a6c'; c.fillText([...v.from.fullHj].join(' '), L + TW * 0.22, y + 40); c.fillStyle = '#1e1915'; c.fillText([...x.fullHj].join(' '), L + TW * 0.78, y + 40)
   c.font = `500 26px ${FF}`; c.fillStyle = '#857a6c'; c.fillText(`${v.from.full} · ${v.from.total}점`, L + TW * 0.22, y + 86); c.fillStyle = '#a93222'; c.font = `700 26px ${FF}`; c.fillText(`${x.full} · ${x.total}점`, L + TW * 0.78, y + 86)
