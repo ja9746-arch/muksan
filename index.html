@@ -179,8 +179,28 @@ a{color:inherit}
 .stage .blot{position:absolute;left:50%;top:196px;width:250px;mix-blend-mode:multiply;transform:translateX(-50%) scale(.2);opacity:0;animation:bleed 3s ease-out infinite}
 @keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
 @keyframes bleed{0%{opacity:0;transform:translateX(-50%) scale(.4)}35%{opacity:.28}100%{opacity:0;transform:translateX(-50%) scale(1.1)}}
-.say{margin-top:26px;font-size:19px;font-weight:700;min-height:1.8em}
-.say2{margin-top:6px;font-size:14px;color:var(--mute);min-height:1.6em}
+/* 먹 가는 장면 — 벼루는 줄여 위에 두고, 아래에 따지는 차례를 장부처럼 적는다 */
+.grind{justify-content:flex-start;padding-top:max(4vh,18px)}
+.stage{transform:scale(.6);margin:-66px auto -64px}
+.say{margin-top:6px;font-size:19px;font-weight:700;min-height:1.6em;line-height:1.5}
+.say2{margin-top:2px;font-size:13.5px;color:var(--mute);min-height:1.5em;line-height:1.5}
+.gbar{width:min(300px,82%);height:3px;margin:12px auto 0;background:rgba(60,45,30,.14);border-radius:2px;overflow:hidden}
+.gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4b433a,var(--red));transition:width .5s ease-out}
+.led{list-style:none;width:min(340px,100%);margin:14px auto 0;padding:12px 14px;text-align:left;background:rgba(251,247,238,.72);border:1px solid rgba(163,132,63,.5);box-shadow:inset 0 0 0 3px rgba(251,247,238,.6)}
+.led li{display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:8px;padding:5px 0;opacity:.32;transition:opacity .3s}
+.led li+li{border-top:1px dashed rgba(60,45,30,.15)}
+.led li i{grid-row:1/3;align-self:start;width:14px;height:14px;margin-top:3px;border-radius:50%;border:1.5px solid rgba(60,45,30,.45)}
+.led li b{font-size:14px;font-weight:700;line-height:1.45;color:var(--ink)}
+.led li span{font-size:12.5px;line-height:1.4;color:var(--red);font-weight:700;font-variant-numeric:tabular-nums}
+.led li span:empty{display:none}
+.led li.on{opacity:1}
+.led li.on i{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 3px,transparent 3.5px);animation:ledDot 1s ease-in-out infinite}
+.led li.done{opacity:1}
+.led li.done b{color:var(--ink2);font-weight:500}
+.led li.done i{border-color:var(--red);background:var(--red)}
+.led li.done i::after{content:"";display:block;width:3px;height:6px;margin:2px 0 0 4.2px;border:solid #fbf1e2;border-width:0 1.6px 1.6px 0;transform:rotate(40deg)}
+@keyframes ledDot{50%{transform:scale(.8);opacity:.6}}
+@media (max-height:720px){.stage{transform:scale(.46);margin:-89px auto -88px}.led{margin-top:10px;padding:8px 12px}.led li{padding:3px 0}.say{font-size:18px}}
 
 /* 결과 공통 */
 .pageh{padding:18px 18px 0;text-align:center}
@@ -678,6 +698,8 @@ a{color:inherit}
   </div>
   <p class="say" id="say" role="status">먹을 갈고 있습니다</p>
   <p class="say2" id="say2"></p>
+  <div class="gbar" aria-hidden="true"><i id="gbar"></i></div>
+  <ol class="led" id="led" aria-hidden="true"></ol>
  </div>
 </section>
 

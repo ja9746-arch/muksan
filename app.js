@@ -214,26 +214,81 @@ function readForm() {
 $('#h').addEventListener('change', () => { $('#mi').disabled = $('#h').value === '' })
 $('#mi').disabled = true
 
-/* ───────── 먹 가는 장면 ───────── */
-const SAYS = {
- baby: [['사주 여덟 글자를 펼칩니다', '태어난 해·달·날·시를 만세력으로 셉니다'], ['모자란 기운을 찾습니다', '다섯 기운을 세어 이름이 채울 기운을 정합니다'], ['인명용 한자를 체로 거릅니다', '대법원 인명용 한자 가운데 이름에 쓰는 글자로'], ['원형이정 네 격을 맞춥니다', '81수에서 길한 수만 남깁니다'], ['소리를 두 학설로 듣습니다', '부딪치는 소리를 걸러 냅니다']],
- gamjeong: [['사주 여덟 글자를 펼칩니다', '태어난 해·달·날·시를 만세력으로 셉니다'], ['글자마다 뿌리를 캡니다', '자원오행과 원획을 셉니다'], ['원형이정 네 격을 셉니다', '81수에 비춰 봅니다'], ['열 가지 잣대로 잽니다', '소리·뜻·놀림까지']],
- manse: [['만세력을 펼칩니다', '절기와 시각을 맞춥니다'], ['다섯 기운을 셉니다', '나무·불·흙·쇠·물']],
-}
-SAYS.rename = SAYS.baby
-async function grind(kind, job) {
- show('grind', 'push')
- const list = SAYS[kind] || SAYS.baby
- let done = false, out
- job.then(v => { out = v; done = true }, e => { out = { ok: false, message: '잠시 연결이 불안정합니다. 다시 눌러 주십시오.' }; done = true })
- const t0 = Date.now(), minMs = RM ? 400 : kind === 'manse' ? 1600 : 2600
- for (let i = 0; ; i++) {
-  const [a, b] = list[Math.min(i, list.length - 1)]
-  $('#say').textContent = a; $('#say2').textContent = b
-  await sleep(RM ? 200 : 700)
-  if (done && Date.now() - t0 >= minMs) break
-  if (i > 60) break
+/* ───────── 먹 가는 장면 ─────────
+   계산은 금방 끝나지만, 손님이 '생각 없이 뱉는다'고 느끼지 않게 무엇을 따지는지를 한 단계씩 보여 준다.
+   단계가 끝날 때마다 실제로 나온 숫자(거른 한자 짝 수, 채울 기운 등)를 적는다 — 꾸민 숫자는 쓰지 않는다 */
+const nf = n => Number(n).toLocaleString('ko-KR')
+const PIL = v => { const c = v.saju.cols; return [[c[3], '년'], [c[2], '월'], [c[1], '일'], [c[0], '시']].map(([p, k]) => p ? `${p.s}${p.b}${k}` : '시 모름').join(' ') }
+const RAWS = v => Object.keys(EL).map(e => `${ELKO[e]} ${v.saju.raw[e]}`).join(' · ')
+const YONG = v => v.saju.yong ? `채울 기운 ${ELKO[v.saju.yong]} · 도울 기운 ${ELKO[v.saju.hee]} · 피할 기운 ${ELKO[v.saju.gi]}` : ''
+const FN = v => v.funnel || {}
+function stepsFor(kind, paid, o) {
+ const S1 = ['사주 여덟 글자를 세웁니다', '태어난 해·달·날·시를 만세력으로 셉니다', PIL]
+ const S2 = ['다섯 기운의 무게를 답니다', '달의 땅 글자 30, 날의 땅 글자 20, 나머지 10씩', v => v.saju.ratio != null ? `나를 돕는 기운이 100 가운데 ${v.saju.ratio}` : RAWS(v)]
+ const S3 = ['이름이 채울 기운을 정합니다', '모자란 기운과 꺼리는 기운을 가립니다', YONG]
+ if (kind === 'manse') return [S1, ['다섯 기운을 셉니다', '나무·불·흙·쇠·물', RAWS]]
+ if (paid) {
+  const many = kind !== 'gamjeong'
+  const L = [['주문을 확인합니다', '넣으신 값과 금액이 맞는지 봅니다', () => '확인했습니다']]
+  if (kind === 'gamjeong') L.push(['봉한 일곱 잣대를 엽니다', '사주·뿌리·수리·소리·부름·뜻·놀림', v => v.name && `총점 ${v.name.total}점`],
+   ['이름을 팔자에 더해 봅니다', '사주 여덟 글자에 이름 글자의 기운을 보탭니다', null],
+   ['같은 소리로 더 나은 한자를 찾습니다', `‘${o.given}’ 소리 그대로 한자만 바꿔 잽니다`, v => v.better && (v.better.length ? `더 나은 짝 ${v.better.length}가지` : '지금 한자보다 나은 짝 없음')],
+   ['바꾼다면 어느 쪽인지 적습니다', '담을 기운·첫소리·획수', null])
+  else L.push(['봉한 한자를 엽니다', '이름마다 한자와 열 잣대 점수', v => v.list && `${v.list.length}개 · 맨 위 ${v.list[0].total}점`],
+   ['이름마다 한눈 풀이를 씁니다', '뜻·바탕·채우는 기운·네 시기·소리·총평', v => v.list && `${v.list.length}편`],
+   ['이름을 팔자에 더해 봅니다', '사주 여덟 글자에 이름 글자의 기운을 보탭니다', null],
+   o.given ? ['지금 이름과 자리마다 견줍니다', '사주·네 시기·소리·뜻이 어떻게 달라지나', v => v.current && v.list && `지금 ${v.current.total}점 → 맨 위 ${v.list[0].total}점`]
+    : ['이름마다 고르면 좋은 점을 짚습니다', '왜 이 이름인지 말로 풀어 둡니다', v => v.list && `${v.list.length}개 이름`])
+  L.push([many ? '성명장과 풀이첩을 준비합니다' : '감명장과 풀이첩을 준비합니다', '사진으로 저장하고 인쇄할 수 있게', null])
+  return L
  }
+ if (kind === 'gamjeong') return [S1, ['다섯 기운을 셉니다', '나무·불·흙·쇠·물', RAWS],
+  ['글자마다 뿌리를 캡니다', '자원오행 — 글자가 품은 기운', v => v.name && v.name.chars.map(c => `${c.h} ${ELKO[c.el]}`).join(' · ')],
+  ['원획을 셉니다', '옥편의 본래 획수로', v => v.name && v.name.chars.map(c => `${c.h} ${c.won}획`).join(' · ')],
+  ['원형이정 네 격을 셉니다', '81수에 비춰 네 시기를 봅니다', null],
+  ['소리를 두 학설로 듣습니다', '요즘 다수 학설과 훈민정음 해례본', null],
+  ['열 가지 잣대로 잽니다', '사주·뿌리·수리·음양·소리·부름·뜻·인명·흔함·놀림', null]]
+ if (kind === 'hanja') return [S1, S2, S3,
+  ['같은 소리의 인명용 한자를 모읍니다', `‘${o.given}’ 소리로 읽히는 글자만`, v => FN(v).소리별 && Object.entries(FN(v).소리별).map(([k, n]) => `${k} ${nf(n)}자`).join(' · ')],
+  ['한자 짝을 맞춥니다', '글자마다 뜻과 뿌리 기운을 봅니다', v => FN(v).짝 != null && `${nf(FN(v).짝)}가지 짝`],
+  ['네 시기의 수를 맞춥니다', '원형이정 — 81수 가운데 길한 수', v => FN(v).수리 != null && `${nf(FN(v).짝)} → ${nf(FN(v).수리)}`],
+  ['사주와 맞춰 봅니다', '채울 기운을 담고 꺼리는 기운은 뺍니다', v => FN(v).사주 != null && `${nf(FN(v).수리)} → ${nf(FN(v).사주)}`],
+  ['열 잣대로 저울질합니다', o.givenHj ? '지금 한자와 견줘 나은 짝을 가립니다' : '점수 높은 짝을 가립니다', v => v.count != null && `${v.count}가지`]]
+ // 아기 이름·개명
+ const dol = o.dolKo
+ return [S1, S2, S3,
+  ['인명용 한자를 체로 거릅니다', '대법원 인명용 한자 9,089자로 이름 글자 짝을 맞춥니다', v => FN(v).이름글자 && `글자 짝 ${nf(FN(v).이름글자)}개`],
+  ['네 시기의 수를 맞춥니다', '원형이정 — 81수 가운데 길한 수만', v => FN(v).수리 != null && `${nf(FN(v).이름글자)} → ${nf(FN(v).수리)}`],
+  ['음양과 소리를 두 학설로 듣습니다', '획수의 홀짝, 첫소리 기운이 부딪치는지', v => FN(v).소리 != null && `${nf(FN(v).수리)} → ${nf(FN(v).소리)}`],
+  ['사주와 맞춰 봅니다', dol ? `돌림자 ${o.dolKo}(${o.dolHj})는 두고 남은 글자로 채웁니다` : '채울 기운을 담고 꺼리는 기운은 뺍니다', v => FN(v).사주 != null && (dol && FN(v).남은이름 < 20 ? `돌림자 ${o.dolKo}(${o.dolHj})를 지켜 맞춤` : `${nf(FN(v).소리)} → ${nf(FN(v).사주)}`)],
+  ['열 잣대로 저울질합니다', '뜻·부르는 맛·놀림까지 재어 스무 이름을 가립니다', v => (FN(v).남은이름 >= 20 ? `이름 ${nf(FN(v).남은이름)}개 가운데 ` : '') + '스무 개']]
+}
+async function grind(kind, job, paid = false) {
+ show('grind', 'push')
+ const steps = stepsFor(kind, paid, S.input || {})
+ let done = false, out
+ job.then(v => { out = v; done = true }, () => { out = { ok: false, message: '잠시 연결이 불안정합니다. 다시 눌러 주십시오.' }; done = true })
+ const led = $('#led'), bar = $('#gbar')
+ led.innerHTML = steps.map(([t]) => `<li><i aria-hidden="true"></i><b>${esc(t)}</b><span></span></li>`).join('')
+ bar.style.width = '0%'
+ // 한 단계 머무는 시간 — 결과 펼칠 때는 조금 길게. 움직임 줄이기를 켜 둔 휴대폰은 짧게
+ const per = RM ? 260 : kind === 'manse' ? 900 : paid ? 1000 : 760
+ const rows = [...led.children]
+ for (let i = 0; i < steps.length; i++) {
+  const [t, g, f] = steps[i], li = rows[i]
+  li.className = 'on'; $('#say').textContent = t; $('#say2').textContent = g
+  li.scrollIntoView({ block: 'nearest' })
+  await sleep(per)
+  // 숫자가 필요한 단계는 결과가 올 때까지 기다린다 — 결과가 늦으면 그만큼 이 단계에 머문다
+  for (let w = 0; f && !done && w < 300; w++) await sleep(100)
+  if (done && out && !out.ok) break
+  const v = out && (out.view || out.eng)
+  let d = ''; try { d = f && v ? (f(v) || '') : '' } catch (e) { d = '' }
+  li.className = 'done'; li.lastChild.textContent = d
+  bar.style.width = Math.round((i + 1) / steps.length * 100) + '%'
+ }
+ for (let w = 0; !done && w < 600; w++) await sleep(100)
+ if (out && out.ok) await sleep(RM ? 100 : 380)
  return out
 }
 $('#form').addEventListener('submit', async e => {
@@ -728,7 +783,7 @@ async function pay() {
    return
   }
   if (c.mode === 'demo') toast('데모판이라 결제 없이 펼칩니다', 1800)
-  const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: c.orderId, paymentKey: (c.mode === 'owner' ? 'owner_' : 'demo_') + c.orderId, amount: c.amount, ticket: c.ticket, input: S.input, from: FROM }))
+  const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: c.orderId, paymentKey: (c.mode === 'owner' ? 'owner_' : 'demo_') + c.orderId, amount: c.amount, ticket: c.ticket, input: S.input, from: FROM }), true)
   if (!r || !r.ok) { history.back(); return toast(r && r.message || '풀이를 펼치지 못했습니다. 다시 눌러 주십시오') }
   await paidOK(r)
  } catch (e) { SS.del('msPend'); const k = why(e); console.error('[결제]', k, e); toast('결제창을 열지 못했습니다. 돈은 빠져나가지 않았습니다 (' + k + ')') }
@@ -741,7 +796,7 @@ async function tossReturn() {
  if (!P || P.orderId !== Q.get('orderId')) return false
  S.input = P.input; S.kind = P.input.kind
  if (t !== 'ok') { SS.del('msPend'); toast((/CANCEL/i.test(Q.get('code') || '') ? '결제를 취소했습니다.' : '결제가 끝나지 않았습니다.') + ' 돈은 빠져나가지 않았습니다'); const f = await post('api/name', { input: S.input }).catch(() => null); if (f && f.ok) { S.free = f.view; renderFree(); show('free') } return true }
- const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: P.orderId, paymentKey: Q.get('paymentKey'), amount: Number(Q.get('amount')), ticket: P.ticket, input: S.input, from: FROM, test: WANT_TOSS }))
+ const r = await grind(S.input.kind, post('api/order', { action: 'confirm', orderId: P.orderId, paymentKey: Q.get('paymentKey'), amount: Number(Q.get('amount')), ticket: P.ticket, input: S.input, from: FROM, test: WANT_TOSS }), true)
  SS.del('msPend')
  if (!r || !r.ok) { show('home', 'replace'); toast((r && r.message || '결제 승인을 마치지 못했습니다') + ' · 승인되지 않은 결제는 돈이 빠져나가지 않습니다', 4200); return true }
  await paidOK(r); return true
