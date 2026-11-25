@@ -69,7 +69,23 @@ ok(!!jar.ms_paid, '결제 증표 쿠키가 심긴다')
   ok(!x.json?.ok, '4,900원 표로 19,900원 상품을 못 연다')
 }
 // 값 — 개명 29,900원, 아기 19,900원, 감정 4,900원. 아기 값 표로 개명을 못 연다
-ok(PRICE.rename === 29900 && PRICE.baby === 19900 && PRICE.gamjeong === 4900, `값 상수 ${PRICE.gamjeong}·${PRICE.baby}·${PRICE.rename}`)
+ok(PRICE.rename === 29900 && PRICE.baby === 19900 && PRICE.gamjeong === 4900 && PRICE.hanja === 14900, `값 상수 ${PRICE.gamjeong}·${PRICE.hanja}·${PRICE.baby}·${PRICE.rename}`)
+// 한자만 바꾸기 — 지금 한자보다 나은 짝만, 소리는 그대로. 짝이 없으면 주문을 받지 않는다. 14,900원 표로 29,900원 개명을 못 연다
+{
+  const hj = { ...ren, kind: 'hanja', d: 25 }
+  const f = await call(name, 'POST', { input: hj })
+  ok(f.json?.ok && f.json.view.count > 0 && f.json.view.sealed.every(x => !x.givenHj && !x.chars), `한자만 바꾸기 무료 화면 — 짝 ${f.json?.view?.count}가지, 한자는 봉함`)
+  const c = await call(order, 'POST', { action: 'create', input: hj })
+  ok(c.json?.ok && c.json.amount === 14900, `한자만 바꾸기 주문 금액 ${c.json?.amount}`)
+  const x = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: 14900, ticket: c.json.ticket, input: { ...ren, d: 25 } })
+  ok(!x.json?.ok, '14,900원(한자) 표로 29,900원 개명을 못 연다')
+  const y = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: 14900, ticket: c.json.ticket, input: hj })
+  const L = y.json?.eng?.list || []
+  ok(y.json?.ok && L.length > 0 && L.every(v => v.given === '민철' && v.total > y.json.eng.current.total && v.vs), `한자만 바꾸기 결과 — ${L.length}가지 모두 ‘민철’ 소리, 지금(${y.json?.eng?.current?.total}점)보다 높고 견줌이 붙음`)
+  const none = { ...ren, kind: 'hanja', given: '끝순', givenHj: undefined, sex: '여', d: 26 }
+  const z = await call(order, 'POST', { action: 'create', input: none })
+  ok(!z.json?.ok && z.json?.code === 'NO_OPTION', '드릴 짝이 없는 소리(끝순)는 주문을 받지 않는다')
+}
 {
   const c = await call(order, 'POST', { action: 'create', input: { ...baby, d: 21 } })
   const x = await call(order, 'POST', { action: 'confirm', orderId: c.json.orderId, paymentKey: 'demo_' + c.json.orderId, amount: PRICE.baby, ticket: c.json.ticket, input: { ...ren, d: 24 } })

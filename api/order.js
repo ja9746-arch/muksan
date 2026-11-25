@@ -97,7 +97,9 @@ export default async function handler(req, res) {
     const 전부 = () => fullView(o)
 
     if (b.action === 'create') {
-      try { 전부() } catch (e) { return send(res, 200, { ok: false, code: e.code || 'BAD_INPUT', message: '태어난 날을 다시 확인해 주십시오.' }) }
+      let 미리; try { 미리 = 전부() } catch (e) { return send(res, 200, { ok: false, code: e.code || 'BAD_INPUT', message: '태어난 날을 다시 확인해 주십시오.' }) }
+      // 한자만 바꾸기 — 드릴 짝이 하나도 없으면 결제를 받지 않는다(무료 화면에서 먼저 알린다)
+      if (o.kind === 'hanja' && !미리.list.length) return send(res, 200, { ok: false, code: 'NO_OPTION', message: '이 소리로는 드릴 한자 짝이 없어 결제를 받지 않습니다.' })
       const 주인 = 주인인가(req)
       const cfg = 주인 ? { mode: 'owner', client: null, live: false } : payConfig(!!b.test, req)
       if (cfg.mode === 'closed') return send(res, 200, { ok: false, code: cfg.reason, message: '결제 창구를 점검하는 중입니다. 잠시 뒤 다시 와 주십시오.' })

@@ -338,7 +338,7 @@ const clip = (v, n) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().
 const int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null }
 export function cleanInput(x) {
   if (!x || typeof x !== 'object') return null
-  const kind = ['baby', 'rename', 'gamjeong', 'manse'].includes(x.kind) ? x.kind : null
+  const kind = ['baby', 'rename', 'gamjeong', 'hanja', 'manse'].includes(x.kind) ? x.kind : null
   if (!kind) return null
   const sex = x.sex === '여' ? '여' : x.sex === '남' ? '남' : null
   const cal = ['양력', '음력', '윤달'].includes(x.cal) ? x.cal : '양력'
@@ -352,10 +352,12 @@ export function cleanInput(x) {
   if (!SURNAMES[sur]) return null
   const opts = Array.isArray(SURNAMES[sur]) ? SURNAMES[sur] : [...SURNAMES[sur]]
   o.sur = sur; o.surHj = opts.includes(x.surHj) ? x.surHj : opts[0]
-  if (kind === 'gamjeong' || (kind === 'rename' && x.given)) {
+  if (kind === 'gamjeong' || kind === 'hanja' || (kind === 'rename' && x.given)) {
     const given = clip(x.given, 4), gh = [...clip(x.givenHj, 4)]
-    if (kind === 'gamjeong' && (!given || ![...given].every(isHangul) || given.length < 1 || given.length > 3)) return null
-    if (given) {
+    if ((kind === 'gamjeong' || kind === 'hanja') && (!given || ![...given].every(isHangul) || given.length < 1 || given.length > 3)) return null
+    // 한자만 바꾸기는 지금 한자가 없어도 된다(한글 이름에 한자를 새로 붙이는 경우)
+    if (kind === 'hanja' && !gh.length) o.given = given
+    else if (given) {
       if (![...given].every(isHangul) || gh.length !== given.length) return null
       // 한자마다 그 소리로 읽히는 인명용 한자인지 — 민(敏)은 되고 민(哲)은 안 된다
       if (gh.some((h, i) => !BY.get(h)?.eum.includes([...given][i]))) return null
@@ -685,7 +687,7 @@ export function meritOf(x, s, list = [], o = {}) {
   }
   // ⑧ 안심
   if (ck.인명.score === 10 && ck.놀림.score === 10) P.push({ t: '안심하고 쓰는 이름', d: '모든 글자가 출생신고·개명신고가 되는 대법원 인명용 한자이고, 놀림말로 들리는 소리도 옛 작명서가 피하라던 글자도 없습니다.' })
-  const lead = `${J.을(x.full)} 고르면 좋은 점`
+  const lead = o.kind === 'hanja' ? `${x.fullHj}${J.으로(x.full).slice(x.full.length)} 쓰면 좋은 점` : `${J.을(x.full)} 고르면 좋은 점`
   return { lead, points: P.slice(0, 7) }
 }
 
@@ -718,7 +720,8 @@ export function compareNames(a, b, s, adult = true, sameSound = false) {
   P.sort((x, y) => y.w - x.w)
   // 뜻 — 두 이름이 담은 바람
   const ab = A.뜻.baram, bb = B.뜻.baram
-  const mean = bb ? { t: '이름에 담은 뜻', a: ab ? `‘${ab}’` : `‘${A.뜻.keys.join('’·‘')}’`, b: `‘${bb}’이 되라는 이름` } : null
+  // 뜻은 늘 견준다 — 한자만 바꾸면 달라지는 것이 바로 뜻이라. 바람 말(…사람)이 없는 글자는 뜻말로
+  const mean = { t: '이름에 담은 뜻', a: ab ? `‘${ab}’` : `‘${A.뜻.keys.join('’·‘')}’`, b: bb ? `‘${bb}’이 되라는 이름` : `‘${B.뜻.keys.join('’·‘')}’` }
   // 못한 곳 — 숨기지 않는다
   const wc = b.checks.filter(c => c.score < A[c.key].score - 0.5 && !(adult && c.key === '흔함'))
   const same = b.checks.filter(c => c.score === 10 && A[c.key].score === 10 && ['인명', '놀림', '음양', '부름'].includes(c.key)).map(c => c.title)
@@ -883,6 +886,55 @@ export function generate(o, s) {
   return { list, funnel }
 }
 
+/** 한자만 바꾸기 — 부르는 이름(한글)은 그대로 두고, 같은 소리로 읽히는 이름 글자 짝을 모두 재어 줄을 세운다.
+ *  지금 한자를 넣었으면 그보다 점수가 높은 짝만, 안 넣었으면(한글 이름에 한자를 새로 붙이는 경우) 점수 높은 짝을 스물까지.
+ *  글자 후보는 이름 글자 모음과 위에서 하나씩 본 글자로만 — 처음에 표준 한자를 다 넣어 봤더니 囹(옥 령, 감옥)·
+ *  涎(침 연)·疹(홍역 진)·攣(경련 련)처럼 이름에 쓸 수 없는 글자가 점수만 높아 위로 올라왔다 */
+/* 이름 글자 모음(POOL·BARAM·NAMEK 380자)에 더하는 글자 — 한국 표준 한자 가운데 첫 뜻이 한 가지로만 읽히는 좋은 말
+   (밝을·맑을·옥돌·기쁠·넓을…)인 글자를 골라 하나씩 보고 남겼다. '옥(감옥/구슬)'·'진눈깨비'·'연기'처럼 갈리거나
+   어두운 글자, 즐길 기(嗜)·바를 도(塗, 칠하다)·재주 기(伎, 광대)처럼 이름에 어색한 글자는 뺐다 */
+const NAMEPLUS = new Set([...'可歌俓倞耿皐高鞏款喬巧久玖謳昑技璣祁綺麒佶緞憺湛譚瀏睦穆珷博帛梵昞昺普溥珤馥捧奭琁鮮設盛琇綏遂陞晨亮揚敭瀁良諒悅洌恬寗煐瓔霓嶢燿瞭耀謠饒玗瑀禑彧煜郁愿偉愉毅誼臧渽雋挺淨瀞禎靖悌早祚儁寯祗晉晋瑨璡賑進澯彰敞淸熾昰荷瀚玹瀅熒蕙淏顥虹化奐歡豁闊愰晃晄煌驍煇暉輝僖凞憘曦熹熺茉芬'])
+const nameChar = h => POOLKEY.has(h) || NAMEK[h] || BARAM[h] || NAMEPLUS.has(h)
+export function hanjaOptions(o, s, cur) {
+  const gk = [...o.given], n = gk.length
+  const cap = n >= 3 ? 24 : 80
+  const sexOk = h => !((o.sex === '남' && FEM.has(h)) || (o.sex === '여' && MAS.has(h)))
+  // 이름 글자가 없는 소리를 표준 한자로 채워 봤더니 靺(오랑캐 이름)·襪(버선)·沫(거품)이 올라왔다 — 채우지 않는다.
+  // 짝이 하나도 없으면 무료 화면에서 그렇다고 알리고 팔지 않는다
+  const cand = gk.map(c => (EUM.get(c) || []).filter(r => r.hun.length && nameChar(r.h) && !badHun(r.hun) && sexOk(r.h)).slice(0, cap).map(r => r.h))
+  const funnel = { 소리별: Object.fromEntries(gk.map((c, i) => [c, cand[i].length])), 짝: 0, 수리: 0, 사주: 0, 나은짝: 0 }
+  if (cand.some(x => !x.length)) return { list: [], funnel }
+  const all = []
+  const walk = (i, pick) => {
+    if (i === n) {
+      const hj = pick.join('')
+      if (cur && hj === o.givenHj) return
+      if (n > 1 && new Set(pick).size < n) return
+      funnel.짝++
+      const ev = evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: hj, sex: o.sex, by: o.y }, s)
+      if (ev.sagyeok.every(x => x.gil)) { funnel.수리++; if (ev.checks[0].score >= 6.5) funnel.사주++ }
+      if (ev.checks.find(c => c.key === '놀림').score < 6) return
+      if (cur && ev.total <= cur.total) return
+      all.push({ ev, key: ev.total + ev.checks[0].score / 100 + (hash(o.sur + hj + o.y + o.m + o.d) % 100) / 100000 })
+      return
+    }
+    for (const h of cand[i]) walk(i + 1, [...pick, h])
+  }
+  walk(0, [])
+  funnel.나은짝 = cur ? all.length : null
+  all.sort((a, b) => b.key - a.key)
+  // 한 자리에 같은 글자가 쏠리지 않게 — 스물 안에서 자리마다 같은 글자는 다섯까지
+  const got = [], cnt = {}, left = []
+  for (const x of all) {
+    if (got.length >= 20) break
+    const ks = [...x.ev.givenHj].map((h, i) => i + h)
+    if (ks.every(k => (cnt[k] || 0) < 5)) { got.push(x); for (const k of ks) cnt[k] = (cnt[k] || 0) + 1 } else left.push(x)
+  }
+  while (got.length < 20 && left.length) got.push(left.shift())
+  got.sort((a, b) => b.key - a.key)
+  return { list: got.map((x, i) => ({ ...x.ev, rank: i + 1 })), funnel }
+}
+
 /** 감정한 이름과 소리가 같은 더 좋은 한자 셋 */
 function betterHanja(o, s, cur) {
   const gk = [...o.given]
@@ -911,6 +963,13 @@ export function freeView(o) {
     return { kind: o.kind, saju: { cols: s.cols, hourKnown: s.hourKnown, solar: s.solar, cnt: s.cnt, raw: s.raw, dmHj: s.dmHj, dm: s.dm, elko: ELKO }, name: { full: ev.full, fullHj: ev.fullHj, chars: ev.chars },
       checks: ev.checks.map(c => FREE_KEYS.includes(c.key) ? c : sealCheck(c)), sealedCount: ev.checks.filter(c => !FREE_KEYS.includes(c.key)).length }
   }
+  if (o.kind === 'hanja') {
+    const cur = o.givenHj ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
+    const g = hanjaOptions(o, s, cur)
+    return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, count: g.list.length,
+      sealed: g.list.slice(0, 10).map(x => ({ total: x.total, grade: x.grade, seals: x.seals })),
+      current: cur ? { full: cur.full, fullHj: cur.fullHj, grade: cur.grade, gradeKo: cur.gradeKo } : null }
+  }
   const g = generate(o, s)
   const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
   return {
@@ -931,6 +990,14 @@ export function fullView(o) {
     const adult = o.y < new Date().getFullYear() - 19
     return { kind: o.kind, saju: sajuView(s), name: { ...ev, story: story(ev, s), palja: palja(ev, s) }, better: betterHanja(o, s, ev).map(x => ({ ...x, story: story(x, s), palja: palja(x, s), vs: compareNames(ev, x, s, adult, true) })), guide }
   }
+  if (o.kind === 'hanja') {
+    const cur = o.givenHj ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
+    const g = hanjaOptions(o, s, cur)
+    const deco = x => ({ ...x, story: story(x, s), palja: palja(x, s) })
+    const adult = o.y < new Date().getFullYear() - 19
+    const more = x => cur ? { vs: compareNames(cur, x, s, adult, true) } : { merit: meritOf(x, s, g.list, o) }
+    return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list.map(x => ({ ...deco(x), ...more(x) })), current: cur ? deco(cur) : null }
+  }
   const g = generate(o, s)
   const cur = o.kind === 'rename' && o.given ? evaluate({ sur: o.sur, surHj: o.surHj, given: o.given, givenHj: o.givenHj, sex: o.sex, by: o.y }, s) : null
   const deco = x => ({ ...x, story: story(x, s), palja: palja(x, s) })
@@ -939,4 +1006,4 @@ export function fullView(o) {
   const more = x => cur ? { vs: compareNames(cur, x, s, adult) } : { merit: meritOf(x, s, g.list, o) }
   return { kind: o.kind, saju: sajuView(s), funnel: g.funnel, list: g.list.map(x => ({ ...deco(x), ...more(x) })), current: cur ? { ...deco(cur), guide: renameGuide(o, s, cur) } : null }
 }
-export const PRODUCTS = ['baby', 'rename', 'gamjeong']
+export const PRODUCTS = ['baby', 'rename', 'gamjeong', 'hanja']

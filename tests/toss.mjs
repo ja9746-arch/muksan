@@ -41,7 +41,7 @@ const baby = { kind: 'baby', sex: '여', cal: '양력', y: 2026, m: 3, d: 14, h:
 const cfg = await call('GET', null, '/api/order')
 ok(cfg.mode === 'toss' && cfg.live === true && cfg.clientKey === 'live_gck_가짜열쇠', `열쇠를 넣으면 대문 주소에서도 토스로 열린다(빈칸 지움) — ${cfg.mode}`)
 
-for (const [inp, label, want] of [[ren, '개명 29,900원', 29900], [baby, '아기 이름 19,900원', 19900], [{ ...ren, kind: 'gamjeong' }, '감정 4,900원', 4900]]) {
+for (const [inp, label, want] of [[ren, '개명 29,900원', 29900], [baby, '아기 이름 19,900원', 19900], [{ ...ren, kind: 'gamjeong' }, '감정 4,900원', 4900], [{ ...ren, kind: 'hanja' }, '한자만 바꾸기 14,900원', 14900]]) {
   jar = {}; seen = []; toss = { mode: 'done' }
   const c = await call('POST', { action: 'create', input: inp })
   ok(c.ok && c.mode === 'toss' && c.amount === want && PRICE[inp.kind] === want, `${label} — 주문 금액 ${c.amount}`)

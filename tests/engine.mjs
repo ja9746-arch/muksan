@@ -72,5 +72,25 @@ for (const [b, label, wantS, wantY] of [
   [{ cal: '양력', y: 1950, m: 1, d: 3, h: 1, mi: 0, sex: '남' }, '戊土 子월, 물이 넘쳐 흙이 여림 → 불(인성)로 받침', '약', '火'],
   [{ cal: '양력', y: 1991, m: 4, d: 23, h: 22, mi: 0, sex: '남' }, '癸水 辰월에 壬·癸·亥·亥 — 물이 굳셈', '강', null],
 ]) { const s = sajuOf(b); ok(s.strong === wantS && (!wantY || s.yong === wantY), `세기 ${label}: ${s.strong}·${s.yong} (${s.ratio}%)`) }
+// 한자만 바꾸기 — 소리는 그대로, 지금 한자보다 높은 짝만, 겹침 없이, 어두운 뜻 글자 없이(처음에 囹·涎·疹·攣이 올라왔던 것)
+{
+  const DARK = new Set([...'囹涎疹攣嗔噫戱憫悶眠凸輟撤轍靺襪沫唜'])
+  const NM = [['민철', '敏哲'], ['영희', '英姬'], ['서연', ''], ['지훈', '志勳'], ['수진', '秀珍'], ['준', '俊'], ['민수진', ''], ['말순', '']]
+  let off = 0, low = 0, dup = 0, dark = 0, n = 0
+  for (let i = 0; i < 80; i++) {
+    const [g, gh] = NM[i % NM.length]
+    const o = cleanInput({ kind: 'hanja', sur: ['김', '이', '박', '최'][i % 4], given: g, givenHj: gh, sex: i % 2 ? '남' : '여', cal: '양력', y: 1950 + (i * 7) % 76, m: 1 + (i * 5) % 12, d: 1 + (i * 11) % 28, h: i % 4 ? (i * 3) % 24 : null, mi: 0 })
+    const v = fullView(o), f = freeView(o), seen = new Set()
+    if (f.count !== v.list.length) off++
+    for (const x of v.list) {
+      n++
+      if (x.given !== g) off++
+      if (v.current && x.total <= v.current.total) low++
+      if (seen.has(x.givenHj)) dup++; seen.add(x.givenHj)
+      if ([...x.givenHj].some(h => DARK.has(h))) dark++
+    }
+  }
+  ok(!off && !low && !dup && !dark, `한자만 바꾸기 80건 ${n}짝 — 소리·수 어긋남 ${off}, 지금보다 낮은 짝 ${low}, 겹침 ${dup}, 어두운 뜻 글자 ${dark}`)
+}
 console.log(bad ? `\n틀림 ${bad}` : '\n엔진 시험 모두 통과')
 process.exit(bad ? 1 : 0)

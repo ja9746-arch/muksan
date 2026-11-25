@@ -14,7 +14,7 @@ import crypto from 'node:crypto'
 
 export const SERVICE = '묵산작명원'      // 대문 기록 창구가 받는 서비스 이름
 // 무엇을 팔았나 — 관리 화면에 '묵산작명원 · 아기 이름'처럼 찍힌다(상품마다 다르다)
-const ITEMS = { baby: '아기 이름', rename: '개명 이름', gamjeong: '이름 감정' }
+const ITEMS = { baby: '아기 이름', rename: '개명 이름', gamjeong: '이름 감정', hanja: '한자 바꾸기' }
 const URL_ = () => process.env.HUB_RECORD_URL || 'https://100gwi.com/api/record'
 // 이름을 소문자(record_secret)로 넣어도 읽는다 — 백목귀 프로젝트에 소문자로 들어가 있어, 같은 꼴로 옮겨 넣을 때 조용히 꺼지지 않게
 const 비밀 = () => (process.env.RECORD_SECRET || process.env.record_secret || '').trim()
