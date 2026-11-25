@@ -357,11 +357,10 @@ a{color:inherit}
 .nc .ms{display:flex;gap:4px;justify-content:center;margin-top:8px}
 .nc .ms img{width:24px;height:24px;object-fit:contain}
 .nc .kk{margin-top:8px;font-size:12.5px;color:var(--ink2);line-height:1.45;word-break:keep-all}
-/* 풀이 펼치기 — 붉은 단추로, 숨 쉬듯 조금 커졌다 작아진다(움직임 줄이기 설정이면 멈춘다) */
-.nc .go{display:inline-flex;align-items:center;margin-top:10px;padding:6px 15px 6px 17px;font-size:14.5px;font-weight:700;line-height:1.3;color:#fbf1e2;letter-spacing:.06em;white-space:nowrap;background:linear-gradient(180deg,#b63a28,var(--red));border:1px solid #8e2617;border-radius:999px;box-shadow:inset 0 0 0 2px rgba(251,241,226,.18),0 6px 12px -8px rgba(120,30,15,.8);animation:goBreath 2.4s ease-in-out infinite;transform-origin:center}
+/* 풀이 펼치기 — 붉은 단추. 움직임은 뺐다(붉은빛만으로 눈에 잘 띈다는 말씀) */
+.nc .go{display:inline-flex;align-items:center;margin-top:10px;padding:6px 15px 6px 17px;font-size:14.5px;font-weight:700;line-height:1.3;color:#fbf1e2;letter-spacing:.06em;white-space:nowrap;background:linear-gradient(180deg,#b63a28,var(--red));border:1px solid #8e2617;border-radius:999px;box-shadow:inset 0 0 0 2px rgba(251,241,226,.18),0 6px 12px -8px rgba(120,30,15,.8)}
 .nc .go::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
-@keyframes goBreath{0%,100%{transform:scale(1);box-shadow:inset 0 0 0 2px rgba(251,241,226,.18),0 6px 12px -8px rgba(120,30,15,.8),0 0 0 0 rgba(169,50,34,0)}50%{transform:scale(1.08);box-shadow:inset 0 0 0 2px rgba(251,241,226,.18),0 8px 14px -8px rgba(120,30,15,.85),0 0 0 6px rgba(169,50,34,.13)}}
-.nc-open:active .go{animation:none;transform:scale(.97);filter:brightness(1.08)}
+.nc-open:active .go{transform:scale(.97);filter:brightness(1.08)}
 .nc .pick{position:relative;z-index:1;margin:0 10px 11px;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(60,45,30,.28);background:rgba(255,253,247,.55);font-size:13px;color:var(--ink2)}
 .nc .pick::before{content:"";width:12px;height:12px;border:1px solid currentColor;border-radius:1px}
 .nc .pick[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#f2e9d8}

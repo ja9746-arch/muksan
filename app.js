@@ -324,8 +324,9 @@ async function grind(kind, job, paid = false) {
  const led = $('#led'), bar = $('#gbar')
  led.innerHTML = steps.map(([t]) => `<li><i aria-hidden="true"></i><b>${esc(t)}</b><span></span></li>`).join('')
  bar.style.width = '0%'
- // 한 단계 머무는 시간 — 결과 펼칠 때는 조금 길게. 움직임 줄이기를 켜 둔 휴대폰은 짧게
- const per = RM ? 260 : kind === 'manse' ? 900 : paid ? 1000 : 760
+ // 한 단계 머무는 시간 — 장부가 한 줄씩 지워지는 것이 보일 만큼만(전체 약 2초).
+ // 처음엔 7초로 잡았으나, 사장님 휴대폰(움직임 줄이기가 켜져 단계당 0.26초로 돌던 것)에서 본 2초가 '딱 좋다'고 하셔서 모두 그 빠르기로
+ const per = kind === 'manse' ? 600 : 270
  const rows = [...led.children]
  for (let i = 0; i < steps.length; i++) {
   const [t, g, f] = steps[i], li = rows[i]
