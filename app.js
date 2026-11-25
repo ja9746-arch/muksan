@@ -79,14 +79,57 @@ post('api/name', { input: { kind: 'baby', sex: '남', cal: '양력', y: 2026, m:
 const F = { kind: 'baby', sex: null, cal: '양력', surHj: null, givenHj: [], dolHj: null, dolPos: 2, wish: [] }
 const WISHES = ['밝음', '지혜', '굳셈', '넉넉함', '바름', '평안', '큰뜻', '고움']
 $('#wish').innerHTML = WISHES.map(w => `<button type="button" class="pill sm" data-v="${w}" aria-pressed="false">${w === '큰뜻' ? '큰 뜻' : w}</button>`).join('')
-$('#h').innerHTML = '<option value="">시를 모릅니다</option>' + Array.from({ length: 24 }, (_, i) => `<option value="${i}">${i < 12 ? '오전' : '오후'} ${i % 12 || 12}시</option>`).join('')
-$('#mi').innerHTML = [0, 10, 20, 30, 40, 50].map(m => `<option value="${m}">${String(m).padStart(2, '0')}분</option>`).join('')
+/* ───────── 생년월일·태어난 시 — 목록에서 고른다 ─────────
+   시는 시진(두 시간) 구간으로 고르고, 그 구간 한가운데 시각으로 센다. 구간은 그날의 표준시·서머타임에 따라
+   달라지므로 날짜를 고르면 서버에서 그날 구간을 받아 다시 만든다(보통 날은 아래 기본 구간과 같다) */
+const NOWY = new Date().getFullYear()
+$('#y').innerHTML = '<option value="">해</option>' + Array.from({ length: NOWY + 2 - 1920 }, (_, i) => NOWY + 1 - i).map(y => `<option value="${y}">${y}년</option>`).join('')
+$('#m').innerHTML = '<option value="">달</option>' + Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}월</option>`).join('')
+const daysIn = (y, m, cal) => cal !== '양력' ? 30 : !y || !m ? 31 : new Date(y, m, 0).getDate()
+function fillDays() {
+ const y = +$('#y').value, m = +$('#m').value, cur = +$('#d').value, n = daysIn(y, m, F.cal)
+ $('#d').innerHTML = '<option value="">날</option>' + Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${i + 1}일</option>`).join('')
+ if (cur && cur <= n) $('#d').value = String(cur)
+}
+fillDays()
+$('#h').innerHTML = Array.from({ length: 24 }, (_, i) => `<option value="${i}">${i === 0 ? '밤 12시(자정)' : i === 12 ? '낮 12시(정오)' : `${i < 12 ? '오전' : '오후'} ${i % 12}시`}</option>`).join('')
+$('#mi').innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${String(m).padStart(2, '0')}분</option>`).join('')
+const SI_BASE = (() => { // 보통 날(표준시 9시간, 서머타임 없음)의 구간 — 서버 sijinOf 와 같은 꼴
+ const Z = '자축인묘진사오미신유술해', W = t => { const h = Math.floor(t / 60); return t === 0 ? '밤' : h < 5 ? '새벽' : h < 9 ? '아침' : h < 11 ? '오전' : h < 13 ? '낮' : h < 17 ? '오후' : h < 21 ? '저녁' : '밤' }
+ const A = t => `${Math.floor(t / 60) % 12 || 12}:${String(t % 60).padStart(2, '0')}`
+ const seg = [[0, 30, 0], [30, 90, 0], ...Array.from({ length: 11 }, (_, k) => [90 + 120 * k, 210 + 120 * k, k + 1]), [1410, 1440, 0]]
+ return { shift: 0, list: seg.map(([s, e, z]) => { const mid = Math.floor((s + e) / 2); return { s, e, ko: Z[z] + '시', h: Math.floor(mid / 60), mi: mid % 60, label: `${W(s)} ${A(s)} ~ ${A(e - 1)} (${Z[z]}시)` } }) }
+})()
+let SI = SI_BASE
+function fillSi(keepS) {
+ const el = $('#si'), prev = keepS != null ? keepS : el.value === 'x' ? 'x' : el.selectedOptions[0] && el.selectedOptions[0].dataset.s
+ el.innerHTML = '<option value="">시를 모릅니다</option>' + SI.list.map(x => `<option value="${x.h}:${x.mi}" data-s="${x.s}" data-ko="${x.ko}" data-label="${esc(x.label)}">${esc(x.label)}</option>`).join('') + '<option value="x">시각을 분까지 압니다</option>'
+ if (prev === 'x') el.value = 'x'
+ else if (prev != null && prev !== '') { const o = [...el.options].find(x => x.dataset.s === String(prev)); if (o) el.value = o.value; else { el.value = ''; $('#siNote').hidden = false; $('#siNote').textContent = '고르신 날은 시 구간이 달라 다시 골라 주십시오.' } }
+ $('#exact').hidden = el.value !== 'x'
+}
+fillSi()
+let siReq = 0
+async function loadSi() {
+ const y = +$('#y').value, m = +$('#m').value, d = +$('#d').value, note = $('#siNote')
+ note.hidden = true
+ if (!y || !m || !d) { if (SI !== SI_BASE) { SI = SI_BASE; fillSi() } return }
+ const my = ++siReq
+ const j = await fetch(`api/name?si=1&cal=${encodeURIComponent(F.cal)}&y=${y}&m=${m}&d=${d}`).then(r => r.json()).catch(() => null)
+ if (my !== siReq || !j || !j.ok) return
+ SI = j; fillSi()
+ if (j.shift) { note.hidden = false; note.textContent = j.shift > 0 ? '이날은 서머타임(시계를 한 시간 앞당기던 때)이라 시 구간이 한 시간 늦게 바뀝니다. 위 구간은 그날 시계로 맞춘 것입니다.' : '이날은 표준시가 지금보다 30분 늦던 때(1954~1961년)라 시 구간이 정시에 바뀝니다. 위 구간은 그날 시계로 맞춘 것입니다.' }
+}
+$('#y').addEventListener('change', () => { fillDays(); loadSi() })
+$('#m').addEventListener('change', () => { fillDays(); loadSi() })
+$('#d').addEventListener('change', loadSi)
+$('#si').addEventListener('change', () => { $('#exact').hidden = $('#si').value !== 'x' })
 const onlyOne = (box, key, after) => box.addEventListener('click', e => {
  const b = e.target.closest('.pill'); if (!b) return
  box.querySelectorAll('.pill').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'))
  F[key] = b.dataset.v; after && after()
 })
-onlyOne($('#sex'), 'sex'); onlyOne($('#cal'), 'cal'); onlyOne($('#dolPos'), 'dolPos')
+onlyOne($('#sex'), 'sex'); onlyOne($('#cal'), 'cal', () => { fillDays(); loadSi() }); onlyOne($('#dolPos'), 'dolPos')
 $('#wish').addEventListener('click', e => {
  const b = e.target.closest('.pill'); if (!b) return
  const v = b.dataset.v, on = F.wish.includes(v)
@@ -157,7 +200,6 @@ function openForm(kind) {
  $('#f-sur').hidden = !has.sur; $('#f-given').hidden = !has.given; $('#f-dol').hidden = !has.dol; $('#f-wish').hidden = !has.wish
  $('#givenLab').textContent = kind === 'rename' ? '지금 이름 (넣으시면 함께 감정합니다)' : '감정할 이름'
  $('#sexLab').textContent = kind === 'baby' ? '아기 성별' : '성별'
- $('#y').placeholder = kind === 'baby' ? '2026' : '1990'
  $('#goTxt').textContent = kind === 'manse' ? '만세력 펼치기' : '다음'
  $$('.err').forEach(e => e.textContent = '')
  show('form')
@@ -171,8 +213,12 @@ async function prefillRename(o) {
  const sb = $(`#surHj .pill[data-v="${o.surHj}"]`); sb && sb.click()
  $$('#sex .pill').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === o.sex)); F.sex = o.sex
  $$('#cal .pill').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === o.cal)); F.cal = o.cal
- $('#y').value = o.y; $('#m').value = o.m; $('#d').value = o.d
- $('#h').value = o.h == null ? '' : String(o.h); $('#mi').value = String(o.mi || 0); $('#mi').disabled = o.h == null
+ $('#y').value = String(o.y); $('#m').value = String(o.m); fillDays(); $('#d').value = String(o.d)
+ await loadSi()
+ if (o.h == null) $('#si').value = ''
+ else if (o.si) { const op = [...$('#si').options].find(x => x.value === `${o.h}:${o.mi || 0}`); $('#si').value = op ? op.value : 'x' }
+ else $('#si').value = 'x'
+ $('#h').value = String(o.h ?? 0); $('#mi').value = String(o.mi || 0); $('#exact').hidden = $('#si').value !== 'x'
  $('#given').value = o.given || ''
  F.givenHj = [...(o.givenHj || '')]
  const box = $('#givenPick'); box.innerHTML = ''
@@ -202,8 +248,14 @@ function readForm() {
  }
  if (!F.sex) return err('sex', '성별을 골라 주십시오.')
  const y = +$('#y').value, m = +$('#m').value, d = +$('#d').value
- if (!(y >= 1920 && y <= 2030) || !(m >= 1 && m <= 12) || !(d >= 1 && d <= 31)) return err('date', '태어난 해·달·날을 숫자로 적어 주십시오.')
- Object.assign(o, { sex: F.sex, cal: F.cal, y, m, d, h: $('#h').value === '' ? null : +$('#h').value, mi: +$('#mi').value || 0 })
+ if (!y || !m || !d) return err('date', `태어난 ${!y ? '해를' : !m ? '달을' : '날을'} 골라 주십시오.`)
+ const sv = $('#si').value, so = $('#si').selectedOptions[0]
+ let h = null, mi = 0
+ if (sv === 'x') { h = +$('#h').value; mi = +$('#mi').value || 0 }
+ else if (sv) { [h, mi] = sv.split(':').map(Number) }
+ Object.assign(o, { sex: F.sex, cal: F.cal, y, m, d, h, mi })
+ // 시진으로 고른 것은 화면에 구간으로 적는다(서버는 받지 않는다 — h·mi 로만 센다)
+ if (sv && sv !== 'x' && so) { o.si = so.dataset.ko; o.siLabel = so.dataset.label }
  if ((k === 'baby' || k === 'rename')) {
   const dk = $('#dol').value.trim()
   if (dk) { if (!F.dolHj) { toast('돌림자의 한자를 골라 주십시오'); return null } o.dolKo = dk; o.dolHj = F.dolHj; o.dolPos = +F.dolPos }
@@ -211,8 +263,6 @@ function readForm() {
  }
  return o
 }
-$('#h').addEventListener('change', () => { $('#mi').disabled = $('#h').value === '' })
-$('#mi').disabled = true
 
 /* ───────── 먹 가는 장면 ─────────
    계산은 금방 끝나지만, 손님이 '생각 없이 뱉는다'고 느끼지 않게 무엇을 따지는지를 한 단계씩 보여 준다.
@@ -318,7 +368,7 @@ function sajuCard(sj, title = '타고난 사주') {
  return `<div class="card"><h2><img src="img/icon-plum.webp" alt="">${title}</h2>${pillarsHTML(sj)}${elsHTML(sj)}<div class="rd">${(sj.lines || []).map(l => `<p>${hl(l)}</p>`).join('')}</div></div>`
 }
 function whenText(o, sj) {
- const t = o.h == null ? '태어난 시 모름' : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
+ const t = o.h == null ? '태어난 시 모름' : o.siLabel ? o.siLabel : `${o.h < 12 ? '오전' : '오후'} ${o.h % 12 || 12}시 ${String(o.mi || 0).padStart(2, '0')}분`
  const sol = sj.solar && o.cal !== '양력' ? ` (양력 ${sj.solar.year}.${sj.solar.month}.${sj.solar.day})` : ''
  return `${o.cal === '양력' ? '양력' : o.cal === '윤달' ? '음력 윤달' : '음력'} ${o.y}년 ${o.m}월 ${o.d}일 ${t}${sol} · ${o.sex === '남' ? '남자' : '여자'}`
 }

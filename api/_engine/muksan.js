@@ -227,6 +227,35 @@ function pillarsOf(b, noon = false) {
   return { cols, solar: P.calendarContext?.solarDate || null, lunar: P.calendarContext?.lunarDate || null }
 }
 
+/* ───────── 태어난 시 고르기 — 그날의 시진 구간 ─────────
+   손님은 시계 시각으로 기억한다. 그런데 시진의 경계는 해의 실제 위치로 정해져 서울에서는 보통 '○시 30분'에 바뀌고,
+   1954~1961년(표준시 8시간 30분)에는 '정시'에, 서머타임을 하던 여름(1948~51·1955~60·1987~88)에는 한 시간 늦게 바뀐다.
+   그래서 그날을 30분 간격으로 실제로 세어 '시 기둥과 날 기둥이 같은 구간'을 묶는다.
+   자시는 날짜가 바뀌는 때라 시각에 따라 날 기둥까지 달라져 둘·셋으로 나뉜다 */
+const ZHI_KO = '자축인묘진사오미신유술해'
+const ampm = t => { const h = Math.floor(t / 60) % 24, m = t % 60; return `${h % 12 || 12}:${String(m).padStart(2, '0')}` }
+const dayWord = t => { const h = Math.floor(t / 60) % 24; return t === 0 ? '밤' : h < 5 ? '새벽' : h < 9 ? '아침' : h < 11 ? '오전' : h < 13 ? '낮' : h < 17 ? '오후' : h < 21 ? '저녁' : '밤' }
+export function sijinOf(b) {
+  const segs = []
+  for (let t = 0; t < 1440; t += 30) {
+    const p = pillarsOf({ sex: '남', cal: b.cal, y: b.y, m: b.m, d: b.d, h: Math.floor(t / 60), mi: t % 60 })
+    if (!p || !p.cols[0]) return null
+    const hr = p.cols[0], dy = p.cols[1], key = `${hr.stem.index}${hr.branch.index}/${dy.stem.index}${dy.branch.index}`
+    const last = segs[segs.length - 1]
+    if (last && last.key === key) last.e = t + 30; else segs.push({ key, s: t, e: t + 30, zi: hr.branch.index })
+  }
+  // 축시가 몇 시에 시작하나로 그날의 어긋남을 잰다 — 보통 1:30(90분)
+  const chuk = segs.find(x => x.zi === 1 && x.s > 0)
+  const shift = chuk ? chuk.s - 90 : 0
+  return {
+    shift,
+    list: segs.map(x => {
+      const mid = Math.floor((x.s + x.e) / 2)
+      return { s: x.s, e: x.e, ko: ZHI_KO[x.zi] + '시', h: Math.floor(mid / 60), mi: mid % 60, label: `${dayWord(x.s)} ${ampm(x.s)} ~ ${ampm(x.e - 1)} (${ZHI_KO[x.zi]}시)` }
+    }),
+  }
+}
+
 /** 사주를 다섯 기운으로 세고, 이름이 채울 기운을 정한다 */
 export function sajuOf(b) {
   const p = pillarsOf(b); if (!p) return null
