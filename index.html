@@ -955,13 +955,15 @@ function 맞추기(켜짐){
 /* 칸을 옮기면 잦아든다. 돌아와서는 아이폰이 소리통을 다시 잠가 두기도 해서,
    화면을 한 번 누를 때 다시 든다(받다가 한 번 틀린 뒤로는 저절로 다시 받지 않는다). */
 document.addEventListener('visibilitychange',function(){if(document.hidden)멈추기();else if(원함&&!틀렸나)틀기()});
+/* 폰에서 손가락이 닿는 순간(pointerdown)은 브라우저가 아직 손짓으로 치지 않는다 — 손가락을 뗄 때
+   (pointerup·touchend·click) 비로소 소리통을 열어 준다. 그래서 그때들도 듣고, 그때마다 소리통부터 깨운다.
+   전에는 닿는 순간만 들어서 첫 손짓에 소리통이 잠긴 채 남았고, 두 번째 손짓에야 소리가 났다. */
 function 손짓(){
   if(!원함||틀렸나)return;
-  if(소리){if(통.state!=='running')깨우기();return}
-  if(!받는중)틀기();
+  if(통&&통.state!=='running')깨우기();
+  if(!소리&&!받는중)틀기();
 }
-document.addEventListener('pointerdown',손짓,true);
-document.addEventListener('keydown',손짓,true);
+['pointerdown','pointerup','touchend','click','keydown'].forEach(function(n){document.addEventListener(n,손짓,true)});
 
 /* 켜고 끄는 둥근 단추. 처음에는 꺼져 있다 — 켜라고 조르지 않는다. 고른 것은 기억해 둔다. */
 function 단추(부모,기억이름){
