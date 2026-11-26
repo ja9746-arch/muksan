@@ -548,6 +548,15 @@ a{color:inherit}
 .certh small{display:block;font-size:13px;font-weight:500;color:var(--mute)}
 
 /* 알림 */
+/* 배경음 단추 — 안쪽 화면 머리줄의 오른쪽 빈자리(.sp)와 같은 자리, 같은 크기. 꺼져 있을 때는 흐리게 둔다 */
+.bgm{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:max(12px,calc(50vw - 218px));z-index:30;width:40px;height:40px;padding:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(248,242,229,.92);border:1px solid rgba(163,132,63,.5);color:var(--ink2);cursor:pointer;
+  opacity:.72;transition:opacity .18s,border-color .18s,color .18s;-webkit-tap-highlight-color:transparent}
+.bgm:hover{opacity:.95}
+.bgm.on{opacity:1;color:var(--red);border-color:rgba(169,50,34,.55)}
+.bgm.busy{opacity:.45;cursor:progress}
+.bgm:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.bgm svg{width:21px;height:21px;display:block}
 .toast{pointer-events:none;position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;z-index:90;max-width:min(92vw,420px);padding:12px 18px;background:#1e1915;color:#f2e9d8;font-size:14.5px;line-height:1.55;border:1px solid rgba(201,166,90,.5);transition:.25s}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -858,6 +867,136 @@ a{color:inherit}
 </div></div>
 
 <script src="app.js" defer></script>
+<script>
+/* ───── 배경음 ─────
+ * 곡 이름·만든 사람·받은 곳·쓸 권리는 snd/README.md 에 적어 두었다.
+ *  - 켜기 전까지는 소리 파일을 아예 안 받는다. 안 들을 사람 데이터를 안 쓴다.
+ *  - webm(opus) 을 먼저 받고, 그걸 못 여는 브라우저(옛 사파리)는 m4a 를 받는다.
+ *  - <audio loop> 가 아니라 Web Audio 버퍼로 돌린다. <audio> 의 되풀이는 한 바퀴마다
+ *    아주 짧게 숨이 끊기는 기기가 있다. 인코더가 앞뒤에 붙인 빈 자리는 재서 뺀다.
+ *  - 들고 날 때 0.6초 동안 지수로 민다. 갑자기 커지거나 뚝 끊기지 않는다.
+ *  - 다른 칸으로 넘어가면 잦아들고, 돌아와 화면을 누르면 다시 든다.
+ */
+var 배경음=(function(){
+"use strict";
+var 곳={webm:'snd/kinko-scrolls-575220.webm',m4a:'snd/kinko-scrolls-575220.m4a'}, 길이=121.1, 크기=0.4, 드는참=0.6;
+var 통=null,손잡이=null,소리=null,담은것=null,구간=null,받는중=null,원함=false,틀렸나=false;
+
+function 고르기(){
+  var a=document.createElement('audio');
+  var o=a.canPlayType&&a.canPlayType('audio/webm; codecs="opus"');
+  return (o==='probably'||o==='maybe')?곳.webm:곳.m4a;
+}
+/* 인코더가 앞에 빈 자리를 붙여 두는 기기가 있다. 그만큼 건너뛰고, 거기서부터
+   다듬을 때 잰 길이(길이)만큼만 돌린다. 꼬리에 붙은 빈 자리나 찌꺼기는 안 돈다.
+   이음매는 다듬을 때 꼬리를 머리에 겹쳐 지워 두었다. */
+function 재기(b){
+  try{
+    var d=b.getChannelData(0),sr=b.sampleRate,바닥=0.0005,i=0,앞끝=Math.min(d.length,(sr*0.1)|0);
+    while(i<앞끝&&Math.abs(d[i])<바닥)i++;
+    if(i>=앞끝)i=0;
+    return [i/sr,Math.min(b.duration,i/sr+길이)];
+  }catch(e){return [0,b.duration]}
+}
+/* 소리통은 손짓 안에서 바로 깨워야 아이폰이 열어 준다. */
+function 깨우기(){
+  if(!통){
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return false;
+    try{통=new AC()}catch(e){return false}
+    손잡이=통.createGain(); 손잡이.gain.value=0.0001; 손잡이.connect(통.destination);
+  }
+  if(통.state==='suspended'){try{var p=통.resume();if(p&&p.catch)p.catch(function(){})}catch(e){}}
+  return true;
+}
+/* 사람 귀는 로그로 듣는다. 곧게 줄이면 뚝 끊긴 듯 들려서 지수로 민다. */
+function 밀기(값,참){
+  if(!손잡이)return;
+  var t=통.currentTime;
+  손잡이.gain.cancelScheduledValues(t);
+  손잡이.gain.setValueAtTime(Math.max(손잡이.gain.value,0.0001),t);
+  손잡이.gain.exponentialRampToValueAtTime(Math.max(값,0.0001),t+참);
+}
+function 받기(){
+  if(담은것)return Promise.resolve(true);
+  if(받는중)return 받는중;
+  받는중=fetch(고르기(),{cache:'force-cache'}).then(function(r){
+    if(!r.ok)throw 0; return r.arrayBuffer();
+  }).then(function(a){
+    return new Promise(function(o,n){var p=통.decodeAudioData(a,o,n);if(p&&p.then)p.then(o,n)});
+  }).then(function(b){담은것=b;구간=재기(b);return true})
+  .catch(function(){틀렸나=true;return false})
+  .then(function(v){받는중=null;return v});
+  return 받는중;
+}
+function 멈추기(){
+  var n=소리; 소리=null;
+  밀기(0.0001,드는참);
+  if(n)setTimeout(function(){try{n.stop()}catch(e){}},드는참*1000+80);
+}
+function 틀기(){
+  if(!깨우기())return Promise.resolve(false);
+  return 받기().then(function(됐나){
+    if(!됐나)return false;
+    if(!원함||document.hidden||소리)return true;   /* 받는 사이에 껐거나 칸을 옮겼다 */
+    var n=통.createBufferSource();
+    n.buffer=담은것; n.loop=true; n.loopStart=구간[0]; n.loopEnd=구간[1];
+    n.connect(손잡이); n.start(0,구간[0]); 소리=n;
+    밀기(크기,드는참);
+    return true;
+  });
+}
+/* 켜고 끄기. 손님이 직접 켠 때만 이 길로 온다. 돌려주는 약속은 소리를 낼 수 있으면 true. */
+function 맞추기(켜짐){
+  원함=!!켜짐; 틀렸나=false;
+  if(원함&&!document.hidden)return 틀기();
+  멈추기(); return Promise.resolve(false);
+}
+/* 칸을 옮기면 잦아든다. 돌아와서는 아이폰이 소리통을 다시 잠가 두기도 해서,
+   화면을 한 번 누를 때 다시 든다(받다가 한 번 틀린 뒤로는 저절로 다시 받지 않는다). */
+document.addEventListener('visibilitychange',function(){if(document.hidden)멈추기();else if(원함&&!틀렸나)틀기()});
+function 손짓(){
+  if(!원함||틀렸나)return;
+  if(소리){if(통.state!=='running')깨우기();return}
+  if(!받는중)틀기();
+}
+document.addEventListener('pointerdown',손짓,true);
+document.addEventListener('keydown',손짓,true);
+
+/* 켜고 끄는 둥근 단추. 처음에는 꺼져 있다 — 켜라고 조르지 않는다. 고른 것은 기억해 둔다. */
+function 단추(부모,기억이름){
+  var 읽기=function(){try{return localStorage.getItem(기억이름)}catch(e){return null}};
+  var 적기=function(v){try{localStorage.setItem(기억이름,v)}catch(e){}};
+  var 나팔='<path d="M4 9.5h3.4L12 5.6v12.8L7.4 14.5H4z"/>';
+  var 머리='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+나팔;
+  var 켠꼴=머리+'<path d="M15.3 9.6a3.4 3.4 0 0 1 0 4.8"/><path d="M17.9 7.4a7 7 0 0 1 0 9.2"/></svg>';
+  var 끈꼴=머리+'<path d="M15.6 9.8 20.2 14.4"/><path d="M20.2 9.8 15.6 14.4"/></svg>';
+  var b=document.createElement('button');
+  b.type='button';
+  function 꼴(바쁨){
+    var 켬=원함;
+    b.className='bgm'+(켬?' on':'')+(바쁨?' busy':'');
+    b.innerHTML=켬?켠꼴:끈꼴;
+    var 말=켬?'배경음 끄기':'배경음 켜기';
+    b.setAttribute('aria-pressed',켬?'true':'false');
+    b.setAttribute('aria-label',말); b.title=말;
+  }
+  b.addEventListener('click',function(){
+    var 켬=!원함; 적기(켬?'on':'off');
+    var 약속=맞추기(켬); 꼴(켬);
+    약속.then(function(됐나){ if(켬&&!됐나&&원함){원함=false;적기('off')} 꼴(false) });
+  });
+  if(읽기()==='on')원함=true;   /* 전에 켜 둔 사람 — 첫 손짓에 다시 든다 */
+  꼴(false);
+  부모.appendChild(b);
+  return b;
+}
+return {맞추기:맞추기,단추:단추,켜졌나:function(){return 원함},
+  /* 설정만 걸어 둔다. 소리는 첫 손짓에 난다(브라우저가 손짓 없이는 소리를 안 내준다). */
+  걸어두기:function(켜짐){원함=!!켜짐}};
+})();
+배경음.단추(document.body,'msBgm');
+</script>
 <script>/* 내 컴퓨터에서 띄울 때도 후기는 대문 창구에서 읽는다 */if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname))window.HUGI_API="https://100gwi.com/api/review"</script>
 <script src="https://100gwi.com/hugi.js" defer></script>
 </body>
