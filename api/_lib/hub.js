@@ -12,7 +12,9 @@
  */
 import crypto from 'node:crypto'
 
-export const SERVICE = '묵산작명원'      // 대문 기록 창구가 받는 서비스 이름
+// 대문 기록 창구(api/record.js)가 받는 서비스 이름 — 대문은 짧은 이름(연연라·백목귀…)으로 가린다.
+// '묵산작명원'으로 보내면 대문이 '값틀림'으로 버린다(2026-11-26 대문에 붙이며 맞춤). 관리 화면에는 '묵산작명원'으로 찍힌다
+export const SERVICE = '묵산'
 // 무엇을 팔았나 — 관리 화면에 '묵산작명원 · 아기 이름'처럼 찍힌다(상품마다 다르다)
 const ITEMS = { baby: '아기 이름', rename: '개명 이름', gamjeong: '이름 감정', hanja: '한자 바꾸기' }
 const URL_ = () => process.env.HUB_RECORD_URL || 'https://100gwi.com/api/record'

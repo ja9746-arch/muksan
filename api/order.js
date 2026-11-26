@@ -22,12 +22,11 @@ const DOC_TEST = { client: 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm', secret: 'te
 const 들어온곳 = v => { const t = String(v || '').slice(0, 24); return /^[a-z0-9_-]{1,24}$/i.test(t) ? t : '' }
 const 짝맞나 = (c, k) => c.startsWith('test_') === k.startsWith('test_')
 
-/* 데모판(2026-11-24): 열쇠가 없으면 미리보기로 돈 없이 풀이 전부를 연다 — 지인 평가용 주소에서만 쓴다.
-   ★ 100gwi.com 대문에 붙이기 전에 반드시 둘 중 하나를 한다(연연라 2026-11-24 와 같은 지킴).
-     ① 토스 열쇠 두 개를 넣고 다시 배포한다 → 토스로 열린다
-     ② 열쇠 없이 붙일 거면 아래 MUKSAN_DEMO 줄을 지운다 → 운영에서는 창구가 '점검 중'으로 닫힌다
-   대문 주소(100gwi.com)를 거쳐 온 요청이면 미리보기를 쓰지 않는다(아래 대문경유). */
-const MUKSAN_DEMO = true
+/* 데모판(2026-11-24~25)에는 열쇠가 없으면 미리보기로 돈 없이 풀이 전부를 열었다(지인 평가용).
+   2026-11-26 출시 — 사장님이 토스 열쇠·기록 비밀·주인 열쇠를 넣었고 100gwi.com 대문에 붙인다.
+   이제 운영에서 열쇠가 빠지면 어느 주소로 오든 창구가 '점검 중'으로 닫힌다(돈 없이 풀이가 새지 않게).
+   미리보기는 로컬·미리보기 배포에서만 남는다. 다시 데모판으로 돌릴 일이 있으면 true 로 */
+const MUKSAN_DEMO = false
 const 대문경유 = req => /(^|\.)100gwi\.com$/i.test(String(req?.headers?.['x-forwarded-host'] || req?.headers?.host || '').split(',')[0].trim().split(':')[0])
 function payConfig(wantTest, req) {
   const c = (process.env.TOSS_CLIENT_KEY || '').trim(), k = (process.env.TOSS_SECRET_KEY || '').trim()

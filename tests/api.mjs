@@ -109,7 +109,9 @@ ok(PRICE.rename === 29900 && PRICE.baby === 19900 && PRICE.gamjeong === 4900 && 
   ok(fr.json?.ok, '닫혀도 무료 풀이는 그대로')
   host = 'muksan.vercel.app'
   const g3 = await call(order, 'GET', null, '/api/order')
-  ok(g3.json?.mode === 'demo', '데모 주소(대문을 거치지 않음)에서는 미리보기로 연다')
+  ok(g3.json?.mode === 'closed' && g3.json.reason === 'NO_KEY', '출시 뒤에는 대문을 거치지 않은 주소(muksan.vercel.app)도 열쇠가 없으면 닫힌다 — 미리보기로 새지 않게')
+  const c3 = await call(order, 'POST', { action: 'create', input: { ...baby, d: 27 } })
+  ok(c3.json?.ok === false && c3.json.code === 'NO_KEY', '출시 뒤 열쇠가 없으면 어느 주소든 주문을 내주지 않는다')
   delete process.env.VERCEL_ENV; jar = keep
 }
 
